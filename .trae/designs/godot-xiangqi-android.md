@@ -179,9 +179,9 @@ public sealed class GameSession {
 > M0-4 已完成（2026-10-01）：Godot 4.7.2 .NET（D:\DesignTools\Godot_v4.7.2-stable_mono_win64\）+ 4.7.2.stable.mono 导出模板已装，Android SDK/JDK 21 由编辑器配置。已知问题：① CLI 导出结束后 Godot 进程可能挂起（gradle 已 BUILD SUCCESSFUL、产物已生成），需手动结束进程；② release 导出需先配置发布密钥库（M6 处理）；③ gradle wrapper 发行版已预装到 %USERPROFILE%\.gradle（services.gradle.org 直连超时，用多线程分段下载补装）；④ godot-lib AAR 不入库（超 GitHub 100MB 限制），新克隆环境需解压 `%APPDATA%\Godot\export_templates\4.7.2.stable.mono\android_source.zip` 到 `android/build/` 还原 libs 后方可 gradle 导出。
 
 ### M1 Android 引擎通信 PoC（Go/No-Go 决策点）
-6. 复制引擎资产到 `engines/android/arm64-v8a/`，gradle jniLibs 配置注入 libpikafish*.so — `engines/`、`android/`
-7. `UciEngineProcess.cs` 初版：C# Process 启动 Pikafish，stdio 管道读写，真机验证 uciok + NNUE 加载 + `go depth 10` 返回 bestmove — `Scripts/Engine/UciEngineProcess.cs`
-8. dotprod 运行时检测与引擎变体回退 — `Scripts/Engine/`
+6. [x] 引擎资产复制到 `engines/android/arm64-v8a/`（dotprod/普通版/ini/NNUE 共 46.6MB；二进制不入库，.gitignore `*.so`，需从参考项目手动放置），gradle `copyPikafishLibs` 任务构建时复制进 jniLibs（AGP 忽略项目目录外 srcDirs，不能直接引用 engines/），导出排除 `engines/*` 防止资产重复进包 — `engines/`、`android/build/build.gradle`
+7. [ ] `UciEngineProcess.cs` 初版已完成（stdio 管道、逐行事件、超时退出）+ `EngineLocator.cs`（/proc/self/maps 解析 nativeLibraryDir）+ `EnginePoc.cs`（uci→uciok/setoption EvalFile/isready/go depth 10/stop 握手探针）；真机验证 uciok + NNUE + bestmove 待设备连接 — `Scripts/Engine/`
+8. [x] dotprod 运行时检测（/proc/cpuinfo Features）与引擎变体回退（dotprod 缺失→普通版）已在 `EngineLocator.ResolveEnginePath` 实现，真机行为随第 7 步验证 — `Scripts/Engine/EngineLocator.cs`
 9. 若第 7 步失败，依序启动 fallback A（Godot 4.3+ Android Java interop 调 ProcessBuilder）→ fallback B（C++ GDExtension 管道封装，仅此一件原生代码）；两个 fallback 均失败则回到用户决策（全项目降级 GDScript+GDExtension，UI 层重做）
 
 ### M2 规则核心库（纯 C# + xUnit）

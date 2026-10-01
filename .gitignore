@@ -9,6 +9,8 @@
 /android/build/*.iml
 # 导出时由 Godot 生成，不入库
 /android/build/src/main/assets/
+# gradle 构建时从 engines/ 复制的 Pikafish 引擎副本
+/android/build/libs/pikafish/
 # godot-lib AAR 超出 GitHub 100MB 限制，从导出模板 android_source.zip 还原（新环境运行一次：
 # Expand-Archive "$env:APPDATA\Godot\export_templates\4.7.2.stable.mono\android_source.zip" android/build）
 /android/build/libs/**/*.aar

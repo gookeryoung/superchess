@@ -253,9 +253,10 @@ android {
 
     sourceSets {
         main.res.srcDirs += ['res']
-        // Pikafish 引擎二进制（含 NNUE，伪装 lib*.so 以 jniLibs 方式打包，安装后解压至 nativeLibraryDir 可直接执行）
-        debug.jniLibs.srcDirs = ['libs/debug', 'libs/debug/vulkan_validation_layers', '../../../engines/android/arm64-v8a']
-        release.jniLibs.srcDirs = ['libs/release', '../../../engines/android/arm64-v8a']
+        // Pikafish 引擎二进制（含 NNUE，伪装 lib*.so 以 jniLibs 方式打包，安装后解压至 nativeLibraryDir 可直接执行）。
+        // AGP 忽略项目目录外的 srcDirs，故由下方 copyPikafishLibs 任务在构建时从 engines/ 复制进来。
+        debug.jniLibs.srcDirs = ['libs/debug', 'libs/debug/vulkan_validation_layers', 'libs/pikafish']
+        release.jniLibs.srcDirs = ['libs/release', 'libs/pikafish']
     }
 
     applicationVariants.all { variant ->
@@ -302,6 +303,21 @@ task validateJavaVersion {
         throw new GradleException("Invalid Java version ${JavaVersion.current()}. Version ${versions.javaVersion} is the minimum supported Java version for Godot gradle builds.")
     }
 }
+
+/**
+ * Copy Pikafish engine binaries (incl. NNUE) from the repo-root engines/ directory into the
+ * jniLibs source dir. AGP ignores jniLibs srcDirs outside the project directory, so the copy
+ * runs before the jniLibs merge tasks of every variant.
+ */
+tasks.register('copyPikafishLibs', Copy) {
+    from '../../engines/android/arm64-v8a'
+    include 'libpikafish*.so'
+    into 'libs/pikafish/arm64-v8a'
+}
+
+tasks.matching { it.name == 'mergeDebugJniLibFolders' || it.name == 'mergeReleaseJniLibFolders' ||
+                 it.name == 'mergeMonoDebugJniLibFolders' || it.name == 'mergeMonoReleaseJniLibFolders' } \
+        .configureEach { dependsOn 'copyPikafishLibs' }
 
 /*
  * Older versions of our vendor plugin include a loader that we no longer need.
