@@ -185,11 +185,11 @@ public sealed class GameSession {
 9. 若第 7 步失败，依序启动 fallback A（Godot 4.3+ Android Java interop 调 ProcessBuilder）→ fallback B（C++ GDExtension 管道封装，仅此一件原生代码）；两个 fallback 均失败则回到用户决策（全项目降级 GDScript+GDExtension，UI 层重做）
 
 ### M2 规则核心库（纯 C# + xUnit）
-10. `Board.cs` + `Fen.cs`：局面表示与 FEN 编解码，移植 Board.java（含 toFENString/restoreFromFEN 语义） — `Scripts/Core/Board.cs`、`Scripts/Core/Fen.cs`
-11. `Move.cs`：UCCI 编解码（h2e2，y 取 9-y） — `Scripts/Core/Move.cs`
-12. `Rule.cs`：7 兵种走法生成（偏移表 + 蹩马腿/塞象眼/过河兵/九宫）+ 将军/将死/困毙/白脸将 — `Scripts/Core/Rule.cs`
-13. `ChineseNotation.cs`：中文纵线着法，移植 Move.java getChsString（前/后/中兵消歧） — `Scripts/Core/ChineseNotation.cs`
-14. xUnit 测试工程：perft(1..3) 对拍（参考值先与第三方实现如 xqlite 交叉验证后再固化）+ 将军/将死/蹩马腿/过河兵/白脸将用例 + FEN 往返用例 + 中文记谱用例 — `tests/Core.Tests/`
+10. [x] `Board.cs` + `Fen.cs`：局面表示与 FEN 编解码（int[10,9]，y 行 x 列原点左上；FenFormatException 携带字段名+原因，棋盘校验含行列/字符/双方各一将帅且在九宫内；宽松兼容「棋盘 走子方」短格式） — `Scripts/Core/Board.cs`、`Scripts/Core/Fen.cs`
+11. [x] `Move.cs`：UCCI 编解码（h2e2，y 取 9-y） — `Scripts/Core/Move.cs`
+12. [x] `Rule.cs`：7 兵种走法生成（偏移表 + 蹩马腿/塞象眼/过河兵/九宫/飞将）+ 合法着过滤（走后被将军/将帅照脸）+ 将军/将死/困毙/白脸将；车炮攻击探测以被攻击方颜色做探针（attackableByJuPao 语义） — `Scripts/Core/Rule.cs`
+13. [x] `ChineseNotation.cs`：中文纵线着法，移植 Move.java getChsString（前/后/中兵消歧；多兵分居多线全盘编号为参考项目同款局限） — `Scripts/Core/ChineseNotation.cs`
+14. [x] xUnit 测试工程：perft(1)=44、perft(2)=1920、perft(3)=79666 已与 pyffish（Fairy-Stockfish）交叉验证一致后固化 + 将军/将死/蹩马腿/塞象眼/过河兵/困毙/白脸将用例 + FEN 往返与非法 FEN 用例 + 中文记谱用例，共 44 例全绿 — `tests/Core.Tests/`
 
 ### M3 棋盘 UI 与交互
 15. 资产导入：棋盘/棋子/标记/音效复制到 `assets/` 并导入配置 — `assets/`

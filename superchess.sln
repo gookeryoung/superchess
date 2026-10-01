@@ -5,6 +5,10 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "superchess", "superchess.csproj", "{833B012E-0BC5-49B2-B252-09CF8457FACA}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Tests", "tests\Core.Tests\Core.Tests.csproj", "{3754E202-9385-4314-B404-7C28FD91125F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,8 +31,23 @@ Global
 		{833B012E-0BC5-49B2-B252-09CF8457FACA}.Release|x64.Build.0 = Debug|Any CPU
 		{833B012E-0BC5-49B2-B252-09CF8457FACA}.Release|x86.ActiveCfg = Debug|Any CPU
 		{833B012E-0BC5-49B2-B252-09CF8457FACA}.Release|x86.Build.0 = Debug|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Debug|x64.Build.0 = Debug|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Debug|x86.Build.0 = Debug|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Release|x64.ActiveCfg = Release|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Release|x64.Build.0 = Release|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Release|x86.ActiveCfg = Release|Any CPU
+		{3754E202-9385-4314-B404-7C28FD91125F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3754E202-9385-4314-B404-7C28FD91125F} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

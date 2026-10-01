@@ -230,23 +230,23 @@ public static class Rule
 
             case Piece.BlackPawn:
             case Piece.RedPawn:
-            {
-                var selfRed = Piece.IsRed(piece);
-                // 未过河（红 area 3 / 黑 area 1）只能前进；过河后可前进与左右平移。
-                var crossed = InArea(fromX, fromY) != (selfRed ? 3 : 1);
-                var num = selfRed ? (crossed ? 9 : 8) : (crossed ? 7 : 6);
-                for (var i = 0; i < OffsetX[num].Length; i++)
                 {
-                    var toX = fromX + OffsetX[num][i];
-                    var toY = fromY + OffsetY[num][i];
-                    if (InArea(toX, toY) != 0 && !Piece.IsSameSide(piece, board.GetPiece(toX, toY)))
+                    var selfRed = Piece.IsRed(piece);
+                    // 未过河（红 area 3 / 黑 area 1）只能前进；过河后可前进与左右平移。
+                    var crossed = InArea(fromX, fromY) != (selfRed ? 3 : 1);
+                    var num = selfRed ? (crossed ? 9 : 8) : (crossed ? 7 : 6);
+                    for (var i = 0; i < OffsetX[num].Length; i++)
                     {
-                        targets.Add(new Position(toX, toY));
+                        var toX = fromX + OffsetX[num][i];
+                        var toY = fromY + OffsetY[num][i];
+                        if (InArea(toX, toY) != 0 && !Piece.IsSameSide(piece, board.GetPiece(toX, toY)))
+                        {
+                            targets.Add(new Position(toX, toY));
+                        }
                     }
-                }
 
-                break;
-            }
+                    break;
+                }
         }
 
         return targets;
@@ -393,20 +393,20 @@ public static class Rule
     }
 
     /// <summary>
-    /// (x, y) 是否被指定车/炮攻击：把 (x, y) 视作该棋子生成伪合法落点，
-    /// 若任一落点上恰是该类棋子，则反过来 (x, y) 处的将帅处于其攻击范围。
+    /// (x, y) 是否被指定车/炮攻击：以「被攻击方颜色」的同类棋子生成 (x, y) 处的伪合法落点
+    /// （车炮走法双方对称，仅同侧判定依赖颜色），若任一落点上恰为该攻击者则处于其攻击范围。
+    /// 与参考项目 attackableByJuPao 语义一致：将帅留在原位参与同侧判定，攻击者因异色总可被"吃"。
     /// </summary>
     private static bool AttackableByRookOrCannon(Board board, int x, int y, int attacker)
     {
-        foreach (var pos in GetPseudoTargets(board, attacker, x, y))
+        var probe = attacker switch
         {
-            if (board.GetPiece(pos) == attacker)
-            {
-                return true;
-            }
-        }
-
-        return false;
+            Piece.BlackRook => Piece.RedRook,
+            Piece.RedRook => Piece.BlackRook,
+            Piece.BlackCannon => Piece.RedCannon,
+            _ => Piece.BlackCannon,
+        };
+        return GetPseudoTargets(board, probe, x, y).Any(pos => board.GetPiece(pos) == attacker);
     }
 
     /// <summary>查询 (x, y) 的区域编号（越界返回 0）。</summary>

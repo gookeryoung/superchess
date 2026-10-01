@@ -43,30 +43,60 @@ public static class Piece
     /// <summary>FEN 字符（红大写、黑小写）；非法值返回 null。</summary>
     public static char? ToFenChar(int piece) => piece switch
     {
-        RedKing => 'K', RedAdvisor => 'A', RedBishop => 'B',
-        RedKnight => 'N', RedRook => 'R', RedCannon => 'C', RedPawn => 'P',
-        BlackKing => 'k', BlackAdvisor => 'a', BlackBishop => 'b',
-        BlackKnight => 'n', BlackRook => 'r', BlackCannon => 'c', BlackPawn => 'p',
+        RedKing => 'K',
+        RedAdvisor => 'A',
+        RedBishop => 'B',
+        RedKnight => 'N',
+        RedRook => 'R',
+        RedCannon => 'C',
+        RedPawn => 'P',
+        BlackKing => 'k',
+        BlackAdvisor => 'a',
+        BlackBishop => 'b',
+        BlackKnight => 'n',
+        BlackRook => 'r',
+        BlackCannon => 'c',
+        BlackPawn => 'p',
         _ => null,
     };
 
     /// <summary>由 FEN 字符解析棋子；非法字符返回 null。</summary>
     public static int? FromFenChar(char c) => c switch
     {
-        'K' => RedKing, 'A' => RedAdvisor, 'B' => RedBishop,
-        'N' => RedKnight, 'R' => RedRook, 'C' => RedCannon, 'P' => RedPawn,
-        'k' => BlackKing, 'a' => BlackAdvisor, 'b' => BlackBishop,
-        'n' => BlackKnight, 'r' => BlackRook, 'c' => BlackCannon, 'p' => BlackPawn,
+        'K' => RedKing,
+        'A' => RedAdvisor,
+        'B' => RedBishop,
+        'N' => RedKnight,
+        'R' => RedRook,
+        'C' => RedCannon,
+        'P' => RedPawn,
+        'k' => BlackKing,
+        'a' => BlackAdvisor,
+        'b' => BlackBishop,
+        'n' => BlackKnight,
+        'r' => BlackRook,
+        'c' => BlackCannon,
+        'p' => BlackPawn,
         _ => null,
     };
 
     /// <summary>中文棋子名（红：帅仕相马车炮兵；黑：将士象马车炮卒）；非法值返回 null。</summary>
     public static char? ToChineseName(int piece) => piece switch
     {
-        RedKing => '帅', RedAdvisor => '仕', RedBishop => '相',
-        RedKnight => '马', RedRook => '车', RedCannon => '炮', RedPawn => '兵',
-        BlackKing => '将', BlackAdvisor => '士', BlackBishop => '象',
-        BlackKnight => '马', BlackRook => '车', BlackCannon => '炮', BlackPawn => '卒',
+        RedKing => '帅',
+        RedAdvisor => '仕',
+        RedBishop => '相',
+        RedKnight => '马',
+        RedRook => '车',
+        RedCannon => '炮',
+        RedPawn => '兵',
+        BlackKing => '将',
+        BlackAdvisor => '士',
+        BlackBishop => '象',
+        BlackKnight => '马',
+        BlackRook => '车',
+        BlackCannon => '炮',
+        BlackPawn => '卒',
         _ => null,
     };
 }

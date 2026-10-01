@@ -21,7 +21,7 @@ public class FenTests
         var fen = board.ToFen();
         var restored = Board.FromFen(fen);
         Assert.Equal(fen, restored.ToFen());
-        Assert.Equal("e2", Move.FromUcci("h2e2")!.Value.ToUcci());
+        Assert.Equal("h2e2", Move.FromUcci("h2e2")!.Value.ToUcci());
     }
 
     [Fact]
@@ -56,9 +56,10 @@ public class FenTests
     [InlineData("rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNRX w - - 0 1", "棋盘")]
     [InlineData("rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKAB w - - 0 1", "棋盘")]
     [InlineData("rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBA1ABNR w - - 0 1", "棋盘")]
-    [InlineData("rnbak1bnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1", "棋盘")]
+    [InlineData("rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/rnba1abnr w - - 0 1", "棋盘")]
     [InlineData("knbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1", "棋盘")]
-    [InlineData("rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNQ w - - 0 1", "走子方")]
+    [InlineData("rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNQ w - - 0 1", "棋盘")]
+    [InlineData("rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR q - - 0 1", "走子方")]
     [InlineData("rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 abc", "回合数")]
     [InlineData("rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 0", "回合数")]
     public void Parse_InvalidFen_ThrowsWithFieldName(string fen, string expectedField)

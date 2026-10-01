@@ -26,14 +26,19 @@ public class ChineseNotationTests
     {
         var board = new Board();
         Assert.Equal("帅五进一", ChineseNotation.ToChinese(board, new Move(new Position(4, 9), new Position(4, 8))));
-        Assert.Equal("将5退1", ChineseNotation.ToChinese(board, new Move(new Position(4, 0), new Position(4, 1))));
+        Assert.Equal("将5进1", ChineseNotation.ToChinese(board, new Move(new Position(4, 0), new Position(4, 1))));
     }
 
     [Fact]
     public void RookRetreat_UsesStepCount()
     {
         var board = new Board();
-        Assert.Equal("车九退二", ChineseNotation.ToChinese(board, new Move(new Position(0, 9), new Position(0, 7))));
+        // 红方向 y 增大为退：车九进二（由 (0,9) 到 (0,7)）。
+        Assert.Equal("车九进二", ChineseNotation.ToChinese(board, new Move(new Position(0, 9), new Position(0, 7))));
+        // 黑方向 y 减小为退（空局面放置黑车验证）。
+        var empty = Board.FromFen("3k5/9/9/9/9/9/9/9/9/4K4 w - - 0 1");
+        empty.SetPiece(0, 3, Piece.BlackRook);
+        Assert.Equal("车1退2", ChineseNotation.ToChinese(empty, new Move(new Position(0, 3), new Position(0, 1))));
     }
 
     [Fact]

@@ -69,9 +69,9 @@ public class RuleTests
     [Fact]
     public void King_ConfinedToPalace()
     {
-        var board = EmptyBoard();
-        Assert.Equal(new HashSet<Position> { new(3, 9), new(5, 9), new(4, 8) },
-            ToTargets(Rule.GetLegalMoves(board, new Position(4, 9))));
+        // 空局面将帅异线（黑将 x=3、红帅 x=4）；红帅移到 (3,9) 会与黑将同线照面，被合法着过滤排除。
+        Assert.Equal(new HashSet<Position> { new(5, 9), new(4, 8) },
+            ToTargets(Rule.GetLegalMoves(EmptyBoard(), new Position(4, 9))));
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class RuleTests
     public void IsInCheck_KnightHobbleRespected()
     {
         // 黑马 (3,7) 攻击红帅 (4,9)：马腿 (3,8) 空则被将；堵住马腿则解除。
-        var board = Board.FromFen("4k4/9/9/9/9/9/4n4/9/9/4K4 w - - 0 1");
+        var board = Board.FromFen("4k4/9/9/9/9/9/9/3n5/9/4K4 w - - 0 1");
         Assert.True(Rule.IsInCheck(board, redSide: true));
         board.SetPiece(3, 8, Piece.RedAdvisor);
         Assert.False(Rule.IsInCheck(board, redSide: true));
@@ -119,7 +119,7 @@ public class RuleTests
     [Fact]
     public void Stalemate_TwoRooksPinKing_NoLegalMoveWithoutCheck()
     {
-        var board = Board.FromFen("3k5/9/9/9/9/9/9/3r1r3/9/4K4 w - - 0 1");
+        var board = Board.FromFen("3k5/9/9/9/9/9/9/9/3r1r3/4K4 w - - 0 1");
         Assert.False(Rule.IsInCheck(board, redSide: true));
         Assert.True(Rule.IsStalemate(board, redSide: true));
         Assert.False(Rule.IsCheckmate(board, redSide: true));
