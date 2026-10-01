@@ -1,64 +1,33 @@
-# Makefile - superchess 项目快捷命令
+# Makefile - superchess（Godot 4 .NET 版）快捷命令
 # 运行 `make help` 查看所有可用命令
 
-PACKAGE := superchess
-COV_THRESHOLD := 95
-PYTEST_JOBS := 8  # pytest-xdist 并行进程数；Windows 默认 8 避免句柄耗尽
+SOLUTION := superchess.sln
 
-.PHONY: help sync build b clean c test cov lint typecheck typecheck-ci check doc tox pub bump patch minor major push
+.PHONY: help restore build clean test lint format check push
 
 help: ## 显示帮助信息
-	@uv run python -c "import re,sys;ms=[(m.group(1),m.group(2).strip()) for f in sys.argv[1:] for l in open(f,encoding='utf-8') if (m:=re.match(r'^([a-zA-Z][\w -]*):.*?##\s*(.*)',l))];[print(f'  {n:<14} {d}') for n,d in ms]" $(MAKEFILE_LIST)
+	@powershell -NoProfile -Command "Get-Content Makefile | Select-String '^\s*[a-zA-Z][\w -]*:.*?##\s*(.*)' | ForEach-Object { if ($$_.Line -match '^([\w -]+):.*?##\s*(.*)') { '{0,-12} {1}' -f $$Matches[1].Trim(), $$Matches[2] } }"
 
-sync: ## 安装开发依赖
-	uv sync --extra dev
+restore: ## 还原 NuGet 依赖
+	dotnet restore $(SOLUTION)
 
-build b: ## 构建分发包 (wheel + sdist)
-	uv build
+build b: ## 构建解决方案
+	dotnet build $(SOLUTION) -c Release --nologo
 
-clean c: ## 清理构建产物与缓存
-	rm -rf build/ dist/ wheels/ *.egg-info htmlcov/ .coverage .coverage.* coverage.xml docs/_build/ .tox/
-	rm -rf .ruff_cache/ .pyrefly_cache/ .mypy_cache/
-	find src tests -type d -name __pycache__ -exec rm -rf {} +
-	find src tests -type f -name "*.py[oc]" -delete
+clean c: ## 清理构建产物
+	dotnet clean $(SOLUTION) --nologo
+	@if (Test-Path .godot) { Remove-Item -Recurse -Force .godot }
 
-test: ## 运行测试（不含覆盖率）
-	uv run pytest -m "not slow" -n $(PYTEST_JOBS)
+test: ## 运行全部测试
+	dotnet test $(SOLUTION) --nologo
 
-cov: ## 运行测试并生成 HTML 覆盖率报告
-	uv run pytest --cov --cov-report=term --cov-fail-under=$(COV_THRESHOLD) --cov-report=html -n $(PYTEST_JOBS)
-	@uv run python -c "print('Coverage report: htmlcov/index.html')"
+lint: ## 代码风格检查（不改动文件）
+	dotnet format $(SOLUTION) --verify-no-changes
 
-lint: ## 代码风格检查 (ruff)
-	uv run ruff check .
-	uv run ruff format --check .
+format: ## 自动修复代码风格
+	dotnet format $(SOLUTION)
 
-typecheck: ## 类型检查 (pyrefly)
-	uv run pyrefly check
+check: lint test ## 运行全套门禁（format 校验 + 测试）
 
-typecheck-ci: ## 类型检查 (pyrefly, CI 平台 linux — 捕获跨平台问题)
-	uv run pyrefly check --python-platform linux
-
-check: lint typecheck typecheck-ci cov ## 运行全套门禁 (lint + typecheck + typecheck-ci + cov)
-
-doc: ## 构建 Sphinx 文档
-	uv run sphinx-build -b html docs docs/_build/html
-
-
-tox: ## 多版本测试 (tox)
-	uvx tox -p auto
-
-BUMP_PART := $(filter-out bump,$(MAKECMDGOALS))
-
-bump: ## 版本号 bump (默认 patch，用法: make bump [minor|major])
-	@uvx bump-my-version bump $(if $(BUMP_PART),$(firstword $(BUMP_PART)),patch) --tag
-
-patch minor major:
-	@:
-
-pub:  ## 推送到pypi
-	uvx twine upload dist/*.whl dist/*.tar.gz
-
-push: ## 推送代码到所有远程仓库
-	@uv run python -c "import subprocess as sp; [print(f'\u63a8\u9001 {r}...',flush=True) or (sp.run(['git','push',r],check=True) and sp.run(['git','push',r,'--tags'],check=True)) for r in sp.check_output(['git','remote'],text=True).split()]"
-
+push: ## 推送代码到所有远程仓库（含标签）
+	@powershell -NoProfile -Command "git remote | ForEach-Object { Write-Host ('推送 ' + $$_.ToString() + '...'); git push $$_.ToString(); git push $$_.ToString() --tags }"

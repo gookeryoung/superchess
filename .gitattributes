@@ -28,3 +28,13 @@
 *.dylib binary
 *.qrc binary
 *.qss binary
+
+# Godot 资产
+*.ttf binary
+*.otf binary
+*.ogg binary
+*.mp3 binary
+*.wav binary
+*.m4a binary
+*.webp binary
+*.nnue binary

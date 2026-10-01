@@ -1,34 +1,19 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+# Godot 4+ specific ignores
+.godot/
+/android/
+*.translation
 
-# Virtual environments
-.venv
+# Godot Mono specific ignores
+.mono/
+data_*/
+mono_crash.*.json
 
-# 测试与覆盖率
-.coverage
-.coverage.*
-htmlcov/
-coverage.xml
-.tox/
+# .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
 
-# 工具缓存
-.ruff_cache/
-.pyrefly_cache/
-.mypy_cache/
-.uv-cache/
-
-# IDE
-.idea/
-*_profile.html
-
-# 环境变量与凭证（勿提交）
-.env
-.env.*
-
-# Sphinx 文档构建输出
-docs/_build/
+# 导出的引擎二进制不入库（体积大，单独分发管理）
+# engines/ 下如需入库请移除对应忽略行
