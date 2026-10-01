@@ -18,6 +18,7 @@ public partial class Main : Node2D
     private readonly GameSession _session = new();
     private BoardView _boardView = null!;
     private BoardInput _boardInput = null!;
+    private ArrowLayer _arrows = null!;
     private SoundPlayer _soundPlayer = null!;
     private HudPanel _hud = null!;
 
@@ -25,6 +26,7 @@ public partial class Main : Node2D
     {
         _boardView = GetNode<BoardView>("Board");
         _boardInput = GetNode<BoardInput>("Board/BoardInput");
+        _arrows = GetNode<ArrowLayer>("Board/Arrows");
         _hud = GetNode<HudPanel>("Hud");
         _soundPlayer = new SoundPlayer();
         AddChild(_soundPlayer);
@@ -43,6 +45,7 @@ public partial class Main : Node2D
         _hud.NewGameRequested += OnNewGame;
         _hud.UndoRequested += OnUndo;
         _hud.HintRequested += OnHint;
+        _hud.AnalyzeRequested += OnAnalyze;
         _hud.ModeToggled += OnModeToggled;
         _hud.OptionsChanged += OnOptionsChanged;
         _hud.Position = new Vector2(0, BoardView.NativeHeight * BoardScale + 16);
@@ -86,10 +89,11 @@ public partial class Main : Node2D
         }
     }
 
-    /// <summary>走子被应用（人类或引擎）：动画 + 音效 + 终局状态。</summary>
+    /// <summary>走子被应用（人类或引擎）：动画 + 音效 + 历史箭头 + 终局状态。</summary>
     private void OnMoveApplied(MoveAppliedEventArgs e)
     {
         _boardView.AnimateMove(e.Move);
+        _arrows.ShowHistoryArrow(BoardView.CellCenter(e.Move.From), BoardView.CellCenter(e.Move.To));
         _soundPlayer.Play(e.IsCapture ? SoundEffect.Capture : SoundEffect.Move);
         if (e.IsCheckmate)
         {
@@ -106,12 +110,14 @@ public partial class Main : Node2D
         }
     }
 
-    /// <summary>局面整体恢复：重注入新局面实例并全量重绘。</summary>
+    /// <summary>局面整体恢复：重注入新局面实例并全量重绘，清空箭头与评估。</summary>
     private void OnBoardReverted()
     {
         _boardInput.ClearSelection();
         _boardInput.Board = _session.CurrentBoard;
         _boardView.RenderBoard(_session.CurrentBoard);
+        _arrows.ClearAll();
+        _hud.ClearEval();
     }
 
     /// <summary>显示引擎提示着法（选中框 + 落点标记，不落子）。</summary>
@@ -161,6 +167,57 @@ public partial class Main : Node2D
             _soundPlayer.Play(SoundEffect.Invalid);
         }
         // 提示着法的展示由 HintProvided 事件处理。
+    }
+
+    /// <summary>分析当前局面：MultiPV 建议箭头 + 评估显示。</summary>
+    private async void OnAnalyze()
+    {
+        var infos = await _session.AnalyzeAsync(GameSession.DefaultAnalyzeMultiPv).ConfigureAwait(true);
+        if (infos.Count == 0)
+        {
+            if (!_session.Busy)
+            {
+                _soundPlayer.Play(SoundEffect.Invalid);
+                _hud.SetStatus("引擎不可用或引擎思考中，无法分析");
+            }
+
+            return;
+        }
+
+        var redToMove = _session.CurrentBoard.RedToMove;
+        var suggestions = new List<(Vector2, Vector2)>();
+        foreach (var info in infos)
+        {
+            if (info.Pv.Count == 0 || Move.FromUcci(info.Pv[0]) is not { } move)
+            {
+                continue;
+            }
+
+            suggestions.Add((BoardView.CellCenter(move.From), BoardView.CellCenter(move.To)));
+            var chinese = ChineseNotation.ToChinese(_session.CurrentBoard, move);
+            _hud.AppendEval($"{_session.History.Count + 1}. {chinese}  {FormatScore(info, redToMove)}");
+        }
+
+        if (suggestions.Count > 0)
+        {
+            _arrows.ShowSuggestions(suggestions);
+            _hud.SetEval(FormatScore(infos[0], redToMove));
+        }
+    }
+
+    /// <summary>
+    /// 分值文本：引擎分值为走子方视角，统一换算为红方视角
+    /// （正数红方占优；mate 分值显示 #N / -#N）。
+    /// </summary>
+    private static string FormatScore(MultiPvInfo info, bool redToMove)
+    {
+        var value = info.ScoreCp * (redToMove ? 1 : -1);
+        if (info.IsMate)
+        {
+            return value > 0 ? $"#{Math.Abs(value)}" : $"-#{Math.Abs(value)}";
+        }
+
+        return (value / 100.0).ToString("+0.00;-0.00");
     }
 
     /// <summary>切换对局模式；首次进入人机模式时启动引擎。</summary>

@@ -142,6 +142,7 @@ public sealed class GameSession : IDisposable {
     public Task<bool> RequestEngineMoveAsync(CancellationToken ct);  // 引擎应手（代际计数丢弃过期结果）
     public bool Undo();                            // 人机连退两步，双人退一步
     public Task<Move?> HintAsync(CancellationToken ct);
+    public Task<IReadOnlyList<MultiPvInfo>> AnalyzeAsync(int multiPv, CancellationToken ct);  // M5：每路 PV 最新评估，按序号排序
     public void NewGame();                         // 思考中先取消搜索
     public bool LoadFen(string fen);               // 非法 FEN 抛 FenFormatException
     public Task<bool> ApplyEngineOptionsAsync(EngineOptions options, CancellationToken ct);
@@ -220,9 +221,9 @@ public sealed class GameSession : IDisposable {
 23. [x] 并发场景测试：tests/Game.Tests（链接 Core/Engine/Game 源码，排除依赖 Godot 的 EnginePoc），FakeUciSession 覆盖「引擎思考中走子/悔棋/提示被拒、思考中新对局取消搜索并丢弃迟到 bestmove、对局结束拦截、连退两步、非法 FEN 保持局面」等 10 例 — `tests/Game.Tests/`
 
 ### M5 分析模式
-24. `AnalyzeAsync`：MultiPV=3~5，解析 info 行（score cp/mate、pv）— `Scripts/Game/GameSession.cs`、`Scripts/Engine/UciSession.cs`
-25. `ArrowLayer.cs`：走子历史箭头（alpha 渐隐）+ MultiPV 建议箭头（digit1-5 角标），移植 ArrowShape 为 Godot `_Draw` — `Scripts/UI/ArrowLayer.cs`
-26. 评估显示：当前局面分值 + 历史走子评估列表 — `Scripts/UI/HudPanel.cs`
+24. [x] `AnalyzeAsync`：MultiPV=3（DefaultAnalyzeMultiPv，go depth 14），InfoReceived 逐路保留最新 info（score cp/mate、pv），bestmove 后按 PV 序号排序返回；忙闲门闸内进行，代际计数丢弃过期结果 — `Scripts/Game/GameSession.cs`
+25. [x] `ArrowLayer.cs`：移植 ArrowShape 多边形参数（60°/120°、边长 80、头宽 26、尾宽 10）为 Godot `_Draw` 多边形；走子历史箭头 1.6s alpha 渐隐；MultiPV 建议箭头按排名 5 色分级 + digit1-5 角标 — `Scripts/UI/ArrowLayer.cs`、`Scenes/Board.tscn`（Arrows 节点）
+26. [x] 评估显示：当前局面分值（红方视角换算，mate 显示 #N/-#N）+ 历史评估列表（手数 + 建议着法中文记谱 + 分值），分析按钮触发，悔棋/新局清空 — `Scripts/UI/HudPanel.cs`、`Scripts/Main.cs`
 
 ### M6 发布打磨
 27. FEN 导入导出（剪贴板），非法 FEN 错误提示 — `Scripts/UI/HudPanel.cs`

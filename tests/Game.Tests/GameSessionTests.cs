@@ -1,4 +1,5 @@
 using SuperChess.Core;
+using SuperChess.Engine;
 using Xunit;
 
 namespace SuperChess.Game.Tests;
@@ -121,6 +122,48 @@ public class GameSessionTests
         Assert.Equal("h9g7", hint!.Value.ToUcci());
         Assert.Empty(_session.History);
         Assert.Equal(Piece.BlackKnight, _session.CurrentBoard.GetPiece(new Position(7, 0)));
+    }
+
+    /// <summary>
+    /// 分析（MultiPV）：每路 PV 保留最新 info 并按序号排序；
+    /// 迟到的低层 info 不覆盖高层结果。
+    /// </summary>
+    [Fact]
+    public async Task AnalyzeAsync_CollectsLatestInfoPerPv()
+    {
+        var task = _session.AnalyzeAsync(3);
+        await _fake.WaitGoRequestedAsync();
+
+        // 模拟引擎逐层刷新：第 1 路先后两条 info，只应保留最新。
+        _fake.EmitInfo(new MultiPvInfo(1, 8, 30, false, false, false, ["h2e2"]));
+        _fake.EmitInfo(new MultiPvInfo(2, 8, -20, false, false, false, ["h9g7"]));
+        _fake.EmitInfo(new MultiPvInfo(1, 10, 55, false, false, false, ["h2e2", "h9g7"]));
+        _fake.EmitInfo(new MultiPvInfo(3, 10, 0, false, false, false, ["b0c2"]));
+        _fake.Release("h9g7");
+
+        var infos = await task;
+        Assert.Equal(3, infos.Count);
+        Assert.Equal((1, 10, 55), (infos[0].Index, infos[0].Depth, infos[0].ScoreCp));
+        Assert.Equal((2, -20), (infos[1].Index, infos[1].ScoreCp));
+        Assert.Equal(3, infos[2].Index);
+
+        // 搜索参数：MultiPV 与分析深度正确下发。
+        Assert.Equal(3, _fake.Requests[0].MultiPv);
+        Assert.Equal(GameSession.DefaultAnalyzeDepth, _fake.Requests[0].Depth);
+    }
+
+    /// <summary>引擎思考中分析被忙闲门闸拒绝（返回空列表）。</summary>
+    [Fact]
+    public async Task AnalyzeAsync_WhileBusy_ReturnsEmpty()
+    {
+        _session.TryPlayMove(Move.FromUcci("h2e2")!.Value);
+        var engineTask = _session.RequestEngineMoveAsync();
+        await _fake.WaitGoRequestedAsync();
+
+        Assert.Empty(await _session.AnalyzeAsync(3));
+
+        _fake.Release("h9g7");
+        await engineTask;
     }
 
     /// <summary>对局结束后走子与引擎请求均被拒绝（将死局面）。</summary>

@@ -13,6 +13,12 @@ public sealed class GameSession : IDisposable
     /// <summary>引擎搜索默认深度（NNUE 引擎在此深度内响应迅速，适配真机）。</summary>
     public const int DefaultSearchDepth = 12;
 
+    /// <summary>分析模式默认深度（MultiPV 评估用，深度略高于对弈以提升建议质量）。</summary>
+    public const int DefaultAnalyzeDepth = 14;
+
+    /// <summary>分析模式默认 MultiPV 路数（AC-5 要求 ≥3）。</summary>
+    public const int DefaultAnalyzeMultiPv = 3;
+
     private readonly List<HistoryRecord> _history = [];
     private Board _board = new();
     private IUciSession? _engine;
@@ -266,6 +272,53 @@ public sealed class GameSession : IDisposable
 
     /// <summary>组装搜索请求参数（当前局面 + 默认深度）。</summary>
     private GoParams BuildGoParams() => new() { Fen = _board.ToFen(), Depth = SearchDepth };
+
+    /// <summary>
+    /// 分析当前局面（MultiPV）：返回每路 PV 的最新评估，按 PV 序号升序。
+    /// 分析在忙闲门闸内进行（Busy 期间返回空列表）；对局双方均可触发。
+    /// </summary>
+    public async Task<IReadOnlyList<MultiPvInfo>> AnalyzeAsync(int multiPv, CancellationToken ct = default)
+    {
+        if (_engine is null || Busy || multiPv < 1)
+        {
+            return [];
+        }
+
+        SetBusy(true);
+        try
+        {
+            var generation = ++_searchGeneration;
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            _searchCts = cts;
+
+            // 每路 PV 保留最新一条 info（引擎逐层刷新，只取最终层）。
+            var latest = new Dictionary<int, MultiPvInfo>();
+            void OnInfo(MultiPvInfo info) => latest[info.Index] = info;
+            _engine.InfoReceived += OnInfo;
+            try
+            {
+                await _engine.GoAsync(
+                    new GoParams { Fen = _board.ToFen(), Depth = DefaultAnalyzeDepth, MultiPv = multiPv },
+                    cts.Token).ConfigureAwait(true);
+
+                if (generation != _searchGeneration)
+                {
+                    return [];
+                }
+            }
+            finally
+            {
+                _engine.InfoReceived -= OnInfo;
+            }
+
+            return latest.Values.OrderBy(i => i.Index).ToList();
+        }
+        finally
+        {
+            _searchCts = null;
+            SetBusy(false);
+        }
+    }
 
     /// <summary>从初始局面重放历史恢复当前 _board。</summary>
     private void RebuildBoard()
