@@ -161,7 +161,7 @@ public sealed class GameSession {
 
 ### 依赖项
 
-- Godot 4.5+（.NET 版）、.NET 8/9 SDK（Android 导出需 mobile workload）
+- Godot 4.7.2 .NET 版（D:\DesignTools\Godot_v4.7.2-stable_mono_win64\）、.NET 8 SDK（GodotSharp 4.7.2 TFM 为 net8.0，rollForward LatestMajor）；Android 导出需 JDK 17+（本机 JDK 21）+ Android SDK（本机 %LOCALAPPDATA%\Android\Sdk，build-tools 35/36、platform android-35）
 - Pikafish arm64-v8a 引擎二进制 + NNUE 权重（复用参考项目 `app/src/main/pikafish/arm64-v8a/`，GPL-3.0，以独立进程分发，关于页须附 GPL 文本与源码指引）
 - 图片/音效资产（复用参考项目 `res/drawable`、`res/raw`，MIT）
 - 参考项目源码作为移植蓝本：`gamelogic/Rule.java`、`gamelogic/Board.java`、`gamelogic/Move.java`、`org/petero/droidfish/player/ComputerPlayer.java`（UCI 状态机逻辑）、`utils/ArrowShape.java`
@@ -171,12 +171,12 @@ public sealed class GameSession {
 
 ### M0 仓库转型与工程管线
 1. [x] 清理 Python 模板文件（pyproject.toml、src/、tests/、docs/*.rst、tox.ini、pyrefly.toml、.coveragerc、.copier-answers.yml、.readthedocs.yaml、pre-commit、bumpversion、pytest.ini、ruff.toml、旧 CI workflows），保留 .git/.trae/.github/LICENSE — 全仓范围
-2. [x] 初始化 Godot 4 .NET 项目（project.godot、superchess.csproj、superchess.sln、Scripts/Main.cs、Scenes/Main.tscn、icon.svg、.gitignore/.gitattributes 更新为 Godot C# 模板）— 根目录；目标引擎版本 Godot 4.5.1（与本机已装导出模板匹配），C# net8.0，渲染 gl_compatibility，竖屏 1080x1920
+2. [x] 初始化 Godot 4 .NET 项目（project.godot、superchess.csproj、superchess.sln、Scripts/Main.cs、Scenes/Main.tscn、icon.svg、.gitignore/.gitattributes 更新为 Godot C# 模板）— 根目录；目标引擎版本 Godot 4.7.2 .NET（2026-10-01 用户确认按 4.7.2 + Android Studio 推进，覆盖原 4.5.1 锁定），C# net8.0，渲染 gl_compatibility，竖屏 1080x1920
 3. [x] 改造 Makefile：`check` = `dotnet format --verify-no-changes` + `dotnet test`；`push` 保留多远程推送包装 — `Makefile`
 4. [ ] Android 导出管线：export_presets.cfg + Android Build Template + gradle 构建，空场景导出 APK 真机安装成功 — `export_presets.cfg`、`android/`
 5. [ ] 验收：Windows 桌面空场景可跑 + 真机空 APK 可装
 
-> M0-4/M0-5 待外部资源：本机 Godot 4.5.1 编辑器本体已缺失（仅存导出模板），需重新下载 .NET 版；Android 导出需 JDK 17 + Android SDK。
+> M0-4/M0-5 进行中（2026-10-01）：外部资源已就位——Godot 4.7.2 .NET 编辑器（D:\DesignTools\Godot_v4.7.2-stable_mono_win64\）与 Android Studio（SDK %LOCALAPPDATA%\Android\Sdk、JDK 21）。需补装 4.7.2 mono 导出模板。
 
 ### M1 Android 引擎通信 PoC（Go/No-Go 决策点）
 6. 复制引擎资产到 `engines/android/arm64-v8a/`，gradle jniLibs 配置注入 libpikafish*.so — `engines/`、`android/`
