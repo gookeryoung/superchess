@@ -41,7 +41,17 @@ public class ChineseNotationTests
     {
         var board = new Board();
         Assert.Equal("炮2平5", ChineseNotation.ToChinese(board, new Move(new Position(1, 2), new Position(4, 2))));
-        Assert.Equal("前炮平5", ChineseNotation.ToChinese(board, new Move(new Position(1, 7), new Position(4, 7))));
+    }
+
+    [Fact]
+    public void TwoBlackCannonsSameFile_UseFrontBackPrefix()
+    {
+        var board = Board.FromFen("3k5/9/9/9/9/9/9/9/9/4K4 w - - 0 1");
+        board.SetPiece(1, 2, Piece.BlackCannon);
+        board.SetPiece(1, 6, Piece.BlackCannon);
+        // 黑方前为靠近红方一侧（y 更大者先扫描）。
+        Assert.Equal("前炮平5", ChineseNotation.ToChinese(board, new Move(new Position(1, 6), new Position(4, 6))));
+        Assert.Equal("后炮平5", ChineseNotation.ToChinese(board, new Move(new Position(1, 2), new Position(4, 2))));
     }
 
     [Fact]
@@ -79,10 +89,10 @@ public class ChineseNotationTests
     [Fact]
     public void AdvisorsAndBishops_NeverUsePrefix()
     {
-        // 仕相同线两枚必然一进一退，规范要求不加前缀。
-        var board = Board.FromFen("3k5/9/9/9/9/9/9/9/9/3KAB3 w - - 0 1");
-        Assert.Equal("仕四进五", ChineseNotation.ToChinese(board, new Move(new Position(3, 9), new Position(4, 8))));
-        Assert.Equal("仕六进五", ChineseNotation.ToChinese(board, new Move(new Position(5, 9), new Position(4, 8))));
+        // 仕相同线两枚必然一进一退，规范要求不加前缀；初始局面直接验证。
+        var board = new Board();
+        Assert.Equal("仕六进五", ChineseNotation.ToChinese(board, new Move(new Position(3, 9), new Position(4, 8))));
+        Assert.Equal("仕四进五", ChineseNotation.ToChinese(board, new Move(new Position(5, 9), new Position(4, 8))));
         Assert.Equal("相七进五", ChineseNotation.ToChinese(board, new Move(new Position(2, 9), new Position(4, 7))));
     }
 }
