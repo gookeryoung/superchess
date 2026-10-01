@@ -253,8 +253,9 @@ android {
 
     sourceSets {
         main.res.srcDirs += ['res']
-        debug.jniLibs.srcDirs = ['libs/debug', 'libs/debug/vulkan_validation_layers']
-        release.jniLibs.srcDirs = ['libs/release']
+        // Pikafish 引擎二进制（含 NNUE，伪装 lib*.so 以 jniLibs 方式打包，安装后解压至 nativeLibraryDir 可直接执行）
+        debug.jniLibs.srcDirs = ['libs/debug', 'libs/debug/vulkan_validation_layers', '../../../engines/android/arm64-v8a']
+        release.jniLibs.srcDirs = ['libs/release', '../../../engines/android/arm64-v8a']
     }
 
     applicationVariants.all { variant ->
