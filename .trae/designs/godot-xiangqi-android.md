@@ -226,10 +226,10 @@ public sealed class GameSession : IDisposable {
 26. [x] 评估显示：当前局面分值（红方视角换算，mate 显示 #N/-#N）+ 历史评估列表（手数 + 建议着法中文记谱 + 分值），分析按钮触发，悔棋/新局清空 — `Scripts/UI/HudPanel.cs`、`Scripts/Main.cs`
 
 ### M6 发布打磨
-27. FEN 导入导出（剪贴板），非法 FEN 错误提示 — `Scripts/UI/HudPanel.cs`
-28. 关于页：MIT 声明 + Pikafish GPL-3.0 声明与源码指引 — `Scenes/About.tscn`
-29. Android 签名导出 + release APK 真机回归（AC-1..AC-8 逐条过） — `export_presets.cfg`
-30. `make check` 全绿收尾，提交并 make push — 全仓
+27. [x] FEN 导入导出（系统剪贴板 DisplayServer.ClipboardSet/ClipboardGet），非法 FEN 状态栏显示出错字段与原因且不崩溃 — `Scripts/UI/HudPanel.cs`（FEN 行）、`Scripts/Main.cs`（OnCopyFen/OnPasteFen）
+28. [x] 关于页改为关于弹窗（AcceptDialog 代码构建，替代独立场景：避免场景切换丢失对局状态）：MIT 声明 + 「象棋鱼」素材来源声明 + Pikafish GPL-3.0 声明与源码指引（UCI 独立进程通信，非衍生作品） — `Scripts/Main.cs`（BuildAboutDialog）
+29. [ ] Android 签名导出 + release APK 真机回归（AC-1..AC-8 逐条过） — `export_presets.cfg`；待用户连接设备 + 配置发布密钥库（debug 密钥库已配置）
+30. [ ] `make check` 全绿收尾，提交并 make push — 全仓
 
 ## Workspace setup
 

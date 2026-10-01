@@ -39,6 +39,15 @@ public partial class HudPanel : PanelContainer
     /// <summary>用户请求切换对局模式。</summary>
     public event Action? ModeToggled;
 
+    /// <summary>用户请求复制当前局面 FEN 到剪贴板。</summary>
+    public event Action? CopyFenRequested;
+
+    /// <summary>用户请求从剪贴板粘贴 FEN 载入局面。</summary>
+    public event Action? PasteFenRequested;
+
+    /// <summary>用户请求查看关于/开源声明。</summary>
+    public event Action? AboutRequested;
+
     /// <summary>强度设置变化（含完整选项快照）。</summary>
     public event Action<EngineOptions>? OptionsChanged;
 
@@ -50,6 +59,7 @@ public partial class HudPanel : PanelContainer
         root.AddChild(BuildButtonRow());
         root.AddChild(BuildStrengthRow());
         root.AddChild(BuildResourceRow());
+        root.AddChild(BuildFenRow());
         _statusLabel = new Label { Text = "双人对弈", HorizontalAlignment = HorizontalAlignment.Center };
         root.AddChild(_statusLabel);
         root.AddChild(BuildEvalSection());
@@ -99,6 +109,26 @@ public partial class HudPanel : PanelContainer
 
         var row = new HBoxContainer();
         foreach (var button in new[] { _newGameButton, _undoButton, _hintButton, _analyzeButton, _modeButton })
+        {
+            button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            row.AddChild(button);
+        }
+
+        return row;
+    }
+
+    /// <summary>构建 FEN 行（复制/粘贴/关于）。</summary>
+    private Control BuildFenRow()
+    {
+        var copyButton = new Button { Text = "复制FEN", CustomMinimumSize = new Vector2(0, 80) };
+        var pasteButton = new Button { Text = "粘贴FEN", CustomMinimumSize = new Vector2(0, 80) };
+        var aboutButton = new Button { Text = "关于", CustomMinimumSize = new Vector2(0, 80) };
+        copyButton.Pressed += () => CopyFenRequested?.Invoke();
+        pasteButton.Pressed += () => PasteFenRequested?.Invoke();
+        aboutButton.Pressed += () => AboutRequested?.Invoke();
+
+        var row = new HBoxContainer();
+        foreach (var button in new[] { copyButton, pasteButton, aboutButton })
         {
             button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             row.AddChild(button);

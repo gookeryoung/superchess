@@ -21,6 +21,7 @@ public partial class Main : Node2D
     private ArrowLayer _arrows = null!;
     private SoundPlayer _soundPlayer = null!;
     private HudPanel _hud = null!;
+    private AcceptDialog _aboutDialog = null!;
 
     public override void _Ready()
     {
@@ -30,6 +31,8 @@ public partial class Main : Node2D
         _hud = GetNode<HudPanel>("Hud");
         _soundPlayer = new SoundPlayer();
         AddChild(_soundPlayer);
+        _aboutDialog = BuildAboutDialog();
+        AddChild(_aboutDialog);
 
         _boardView.Scale = new Vector2(BoardScale, BoardScale);
         _boardInput.Board = _session.CurrentBoard;
@@ -48,8 +51,31 @@ public partial class Main : Node2D
         _hud.AnalyzeRequested += OnAnalyze;
         _hud.ModeToggled += OnModeToggled;
         _hud.OptionsChanged += OnOptionsChanged;
+        _hud.CopyFenRequested += OnCopyFen;
+        _hud.PasteFenRequested += OnPasteFen;
+        _hud.AboutRequested += () => _aboutDialog.PopupCentered();
         _hud.Position = new Vector2(0, BoardView.NativeHeight * BoardScale + 16);
     }
+
+    /// <summary>构建关于弹窗（MIT 声明 + Pikafish GPL-3.0 声明与源码指引）。</summary>
+    private AcceptDialog BuildAboutDialog() => new()
+    {
+        Title = "关于 SuperChess",
+        DialogText = """
+            SuperChess — 中国象棋训练与 AI 练习工具
+
+            本程序代码以 MIT 许可发布（详见项目 LICENSE 文件）。
+
+            棋盘/棋子/音效素材与规则算法移植自开源项目
+            「象棋鱼」chinese-chess-fish-android（MIT 许可）
+            https://github.com/zfdang/chinese-chess-fish-android
+
+            内置引擎 Pikafish 以 GPL-3.0 许可独立发布，本应用以其
+            独立进程方式分发并通过 UCI 协议通信：
+            https://github.com/official-pikafish/Pikafish
+            """,
+        OkButtonText = "关闭",
+    };
 
     public override void _ExitTree()
     {
@@ -205,10 +231,8 @@ public partial class Main : Node2D
         }
     }
 
-    /// <summary>
-    /// 分值文本：引擎分值为走子方视角，统一换算为红方视角
-    /// （正数红方占优；mate 分值显示 #N / -#N）。
-    /// </summary>
+    /// <summary>分值文本：引擎分值为走子方视角，统一换算为红方视角
+    /// （正数红方占优；mate 分值显示 #N / -#N）。</summary>
     private static string FormatScore(MultiPvInfo info, bool redToMove)
     {
         var value = info.ScoreCp * (redToMove ? 1 : -1);
@@ -218,6 +242,43 @@ public partial class Main : Node2D
         }
 
         return (value / 100.0).ToString("+0.00;-0.00");
+    }
+
+    /// <summary>复制当前局面 FEN 到系统剪贴板（AC-8 导出）。</summary>
+    private void OnCopyFen()
+    {
+        DisplayServer.ClipboardSet(_session.CurrentBoard.ToFen());
+        _hud.SetStatus("已复制当前局面 FEN");
+    }
+
+    /// <summary>从系统剪贴板载入 FEN；非法 FEN 显示出错字段且不崩溃（AC-8）。</summary>
+    private void OnPasteFen()
+    {
+        var fen = DisplayServer.ClipboardGet().Trim();
+        if (fen.Length == 0)
+        {
+            _soundPlayer.Play(SoundEffect.Invalid);
+            _hud.SetStatus("剪贴板为空，无法载入 FEN");
+            return;
+        }
+
+        try
+        {
+            if (_session.LoadFen(fen))
+            {
+                _hud.SetStatus("已载入剪贴板 FEN");
+            }
+            else
+            {
+                _soundPlayer.Play(SoundEffect.Invalid);
+                _hud.SetStatus("引擎思考中，无法载入 FEN");
+            }
+        }
+        catch (FenFormatException e)
+        {
+            _soundPlayer.Play(SoundEffect.Invalid);
+            _hud.SetStatus($"非法 FEN：{e.FieldName} 字段错误（{e.Message}）");
+        }
     }
 
     /// <summary>切换对局模式；首次进入人机模式时启动引擎。</summary>
