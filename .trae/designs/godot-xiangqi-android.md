@@ -172,7 +172,7 @@ public sealed class GameSession {
 ### M0 仓库转型与工程管线
 1. [x] 清理 Python 模板文件（pyproject.toml、src/、tests/、docs/*.rst、tox.ini、pyrefly.toml、.coveragerc、.copier-answers.yml、.readthedocs.yaml、pre-commit、bumpversion、pytest.ini、ruff.toml、旧 CI workflows），保留 .git/.trae/.github/LICENSE — 全仓范围
 2. [x] 初始化 Godot 4 .NET 项目（project.godot、superchess.csproj、superchess.sln、Scripts/Main.cs、Scenes/Main.tscn、icon.svg、.gitignore/.gitattributes 更新为 Godot C# 模板）— 根目录；目标引擎版本 Godot 4.7.2 .NET（2026-10-01 用户确认按 4.7.2 + Android Studio 推进，覆盖原 4.5.1 锁定），C# net8.0，渲染 gl_compatibility，竖屏 1080x1920
-3. [x] 改造 Makefile：`check` = `dotnet format --verify-no-changes` + `dotnet test`；`push` 保留多远程推送包装 — `Makefile`
+3. [x] 改造 Makefile：`check` = `dotnet format --verify-no-changes` + `dotnet build` + `dotnet test`（M3 起增加 build：dotnet test 仅构建测试工程，主工程编译错误需 build 门禁捕获）；`push` 保留多远程推送包装 — `Makefile`
 4. [x] Android 导出管线：export_presets.cfg + Android Build Template（`android/build/`，含 `.build_version`=4.7.2.stable.mono 与 `.gdignore` 标记）+ gradle 构建，CLI `--export-debug` 导出 `build/android/superchess-debug.apk` 并通过 apksigner 验签 — `export_presets.cfg`、`android/`；注意：compileSdk/targetSdk 暂用 35（本机仅装 android-35 平台，SDK licenses 目录写入被沙箱拦截无法补哈希），模板 `config.gradle` 已同步改为 35，后续 SDK 组件齐全后可升回 36
 5. [ ] 验收：Windows 桌面空场景可跑（已验证）+ 真机空 APK 可装（待用户连接设备后 adb install 验证）
 
@@ -192,11 +192,11 @@ public sealed class GameSession {
 14. [x] xUnit 测试工程：perft(1)=44、perft(2)=1920、perft(3)=79666 已与 pyffish（Fairy-Stockfish）交叉验证一致后固化 + 将军/将死/蹩马腿/塞象眼/过河兵/困毙/白脸将用例 + FEN 往返与非法 FEN 用例 + 中文记谱用例，共 44 例全绿 — `tests/Core.Tests/`
 
 ### M3 棋盘 UI 与交互
-15. 资产导入：棋盘/棋子/标记/音效复制到 `assets/` 并导入配置 — `assets/`
-16. `Board.tscn` + `BoardView.cs`：棋盘渲染（底图等比缩放，1240x1340 坐标系）、棋子 Sprite2D、走子 Tween 动画 — `Scenes/Board.tscn`、`Scripts/UI/BoardView.cs`
-17. `BoardInput.cs`：触点/点击 → 格坐标逆映射，两段式选子落子，选中框与可走点提示 — `Scripts/UI/BoardInput.cs`
-18. 音效：select/move/capture/check/checkmate/invalid 触发 — `Scripts/UI/`
-19. 验收：双人本地对弈完整可玩（AC-6 的 UI 部分）
+15. [x] 资产导入：棋盘/14 棋子/标记（选中框、落点提示、digit1-5 角标）/音效复制到 `assets/`（checkmate.m4a 经 ffmpeg 转 checkmate.ogg，Godot 不支持 AAC） — `assets/board/chessboard.png`、`assets/pieces/`、`assets/markers/`、`assets/sounds/`
+16. [x] `Board.tscn` + `BoardView.cs`：底图 1240x1340 原生坐标系（格距 136、棋子 110、交叉点中心 (77+136x, 60+136y)），Main 按视口宽 1080/1240 等比缩放；棋子 Sprite2D 精灵表 + 走子 Tween 动画（0.15s CubicOut，被吃子同步淡出） — `Scenes/Board.tscn`、`Scripts/UI/BoardView.cs`
+17. [x] `BoardInput.cs`：`_UnhandledInput` 鼠标/触点（触屏经 emulate_mouse_from_touch）→ `TryHit` 逆映射（棋子矩形内有效，格间空隙忽略），两段式选子落子（仅可选走子方棋子，Rule.GetLegalMoves 生成落点提示），`MoveChosen` 信号回传格坐标 — `Scripts/UI/BoardInput.cs`
+18. [x] 音效：SoundPlayer 每音效独立 AudioStreamPlayer（select/move/capture/check/checkmate/invalid）；选子与非法点击由 BoardInput 触发，走子/吃子/将军/将死由 Main 在走子后判定触发；动画期间输入挂起 — `Scripts/UI/SoundPlayer.cs`、`Scripts/Main.cs`
+19. [x] 验收：双人本地对弈完整可玩（headless 冒烟：炮二平五/黑方跳马/非走子方拦截/局面一致性全过）；桌面可视化交互待用户人工确认（AC-6 的 UI 部分）
 
 ### M4 对弈模式
 20. `UciSession.cs` 完整实现：握手/setoption/position/go/stop/info 解析，移植 ComputerPlayer.java 的解析逻辑 — `Scripts/Engine/UciSession.cs`

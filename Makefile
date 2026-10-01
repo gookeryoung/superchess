@@ -27,7 +27,7 @@ lint: ## 代码风格检查（不改动文件）
 format: ## 自动修复代码风格
 	dotnet format $(SOLUTION)
 
-check: lint test ## 运行全套门禁（format 校验 + 测试）
+check: lint build test ## 运行全套门禁（format 校验 + 全量构建 + 测试）
 
 push: ## 推送代码到所有远程仓库（含标签）
 	@powershell -NoProfile -Command "git remote | ForEach-Object { Write-Host ('推送 ' + $$_.ToString() + '...'); git push $$_.ToString(); git push $$_.ToString() --tags }"
