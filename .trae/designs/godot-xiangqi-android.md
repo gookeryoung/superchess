@@ -173,10 +173,10 @@ public sealed class GameSession {
 1. [x] 清理 Python 模板文件（pyproject.toml、src/、tests/、docs/*.rst、tox.ini、pyrefly.toml、.coveragerc、.copier-answers.yml、.readthedocs.yaml、pre-commit、bumpversion、pytest.ini、ruff.toml、旧 CI workflows），保留 .git/.trae/.github/LICENSE — 全仓范围
 2. [x] 初始化 Godot 4 .NET 项目（project.godot、superchess.csproj、superchess.sln、Scripts/Main.cs、Scenes/Main.tscn、icon.svg、.gitignore/.gitattributes 更新为 Godot C# 模板）— 根目录；目标引擎版本 Godot 4.7.2 .NET（2026-10-01 用户确认按 4.7.2 + Android Studio 推进，覆盖原 4.5.1 锁定），C# net8.0，渲染 gl_compatibility，竖屏 1080x1920
 3. [x] 改造 Makefile：`check` = `dotnet format --verify-no-changes` + `dotnet test`；`push` 保留多远程推送包装 — `Makefile`
-4. [ ] Android 导出管线：export_presets.cfg + Android Build Template + gradle 构建，空场景导出 APK 真机安装成功 — `export_presets.cfg`、`android/`
-5. [ ] 验收：Windows 桌面空场景可跑 + 真机空 APK 可装
+4. [x] Android 导出管线：export_presets.cfg + Android Build Template（`android/build/`，含 `.build_version`=4.7.2.stable.mono 与 `.gdignore` 标记）+ gradle 构建，CLI `--export-debug` 导出 `build/android/superchess-debug.apk` 并通过 apksigner 验签 — `export_presets.cfg`、`android/`；注意：compileSdk/targetSdk 暂用 35（本机仅装 android-35 平台，SDK licenses 目录写入被沙箱拦截无法补哈希），模板 `config.gradle` 已同步改为 35，后续 SDK 组件齐全后可升回 36
+5. [ ] 验收：Windows 桌面空场景可跑（已验证）+ 真机空 APK 可装（待用户连接设备后 adb install 验证）
 
-> M0-4/M0-5 进行中（2026-10-01）：外部资源已就位——Godot 4.7.2 .NET 编辑器（D:\DesignTools\Godot_v4.7.2-stable_mono_win64\）与 Android Studio（SDK %LOCALAPPDATA%\Android\Sdk、JDK 21）。需补装 4.7.2 mono 导出模板。
+> M0-4 已完成（2026-10-01）：Godot 4.7.2 .NET（D:\DesignTools\Godot_v4.7.2-stable_mono_win64\）+ 4.7.2.stable.mono 导出模板已装，Android SDK/JDK 21 由编辑器配置。已知问题：① CLI 导出结束后 Godot 进程可能挂起（gradle 已 BUILD SUCCESSFUL、产物已生成），需手动结束进程；② release 导出需先配置发布密钥库（M6 处理）；③ gradle wrapper 发行版已预装到 %USERPROFILE%\.gradle（services.gradle.org 直连超时，用多线程分段下载补装）；④ godot-lib AAR 不入库（超 GitHub 100MB 限制），新克隆环境需解压 `%APPDATA%\Godot\export_templates\4.7.2.stable.mono\android_source.zip` 到 `android/build/` 还原 libs 后方可 gradle 导出。
 
 ### M1 Android 引擎通信 PoC（Go/No-Go 决策点）
 6. 复制引擎资产到 `engines/android/arm64-v8a/`，gradle jniLibs 配置注入 libpikafish*.so — `engines/`、`android/`

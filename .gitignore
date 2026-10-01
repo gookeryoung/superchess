@@ -1,6 +1,17 @@
 # Godot 4+ specific ignores
 .godot/
-/android/
+/android/build/app/build/
+/android/build/build/
+/android/build/.gradle/
+/android/build/local.properties
+/android/build/captures/
+/android/build/.idea/
+/android/build/*.iml
+# 导出时由 Godot 生成，不入库
+/android/build/src/main/assets/
+# godot-lib AAR 超出 GitHub 100MB 限制，从导出模板 android_source.zip 还原（新环境运行一次：
+# Expand-Archive "$env:APPDATA\Godot\export_templates\4.7.2.stable.mono\android_source.zip" android/build）
+/android/build/libs/**/*.aar
 *.translation
 
 # Godot Mono specific ignores
@@ -14,6 +25,9 @@ obj/
 .vs/
 *.user
 *.suo
+
+# 导出产物与构建输出
+/build/
 
 # 导出的引擎二进制不入库（体积大，单独分发管理）
 # engines/ 下如需入库请移除对应忽略行
