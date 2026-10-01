@@ -14,6 +14,9 @@ public partial class BoardInput : Node2D
     /// <summary>当前对局局面（由 Main 装配时注入；走子方决定可选中颜色）。</summary>
     public Board? Board { get; set; }
 
+    /// <summary>输入门闸（引擎思考中由 Main 关闭，忽略棋盘点击）。</summary>
+    public bool InputEnabled { get; set; } = true;
+
     /// <summary>音效播放器（选子/非法点击音效，由 Main 装配时注入）。</summary>
     public SoundPlayer? SoundPlayer { get; set; }
 
@@ -31,7 +34,7 @@ public partial class BoardInput : Node2D
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (Board is null || _view.IsAnimating ||
+        if (Board is null || !InputEnabled || _view.IsAnimating ||
             @event is not InputEventMouseButton
             {
                 Pressed: true,

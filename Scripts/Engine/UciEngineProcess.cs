@@ -16,6 +16,9 @@ public sealed class UciEngineProcess : IDisposable
     /// <summary>引擎标准错误输出的一行。</summary>
     public event Action<string>? ErrorReceived;
 
+    /// <summary>引擎进程退出（stdout 管道关闭）时触发。</summary>
+    public event Action? Disconnected;
+
     /// <summary>进程是否存活。</summary>
     public bool IsAlive => _process is { HasExited: false };
 
@@ -57,6 +60,10 @@ public sealed class UciEngineProcess : IDisposable
             catch (Exception)
             {
                 // 进程退出或管道关闭时读行会抛异常，属正常收尾，无需处理。
+            }
+            finally
+            {
+                Disconnected?.Invoke();
             }
         });
         _process.ErrorDataReceived += (_, e) =>

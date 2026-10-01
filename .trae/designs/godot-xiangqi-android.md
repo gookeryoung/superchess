@@ -119,21 +119,36 @@ public static class ChineseNotation {
 }
 
 // Scripts/Engine
-public sealed class UciSession : IAsyncDisposable {
-    public Task StartAsync(string enginePath, EngineOptions options);             // uci -> setoption -> isready -> uciok
-    public Task<SearchResult> GoAsync(GoParams p, CancellationToken ct);          // position fen ... moves ... + go depth/movetime/infinite
-    public void Stop();                                                           // 中断搜索，返回当前 bestmove
-    public event Action<MultiPvInfo>? InfoReceived;                               // info depth N multipv K score cp/mate pv ...
+public interface IUciSession : IAsyncDisposable {
+    bool IsReady { get; }
+    event Action<MultiPvInfo>? InfoReceived;          // 含 pv 数据的 info 行（走子方视角分值）
+    Task StartAsync(string enginePath, EngineOptions? options, CancellationToken ct);   // uci -> setoption -> isready
+    Task<SearchResult> GoAsync(GoParams p, CancellationToken ct);   // position fen ... moves ... + go depth/movetime/infinite
+    Task ApplyOptionsAsync(EngineOptions options, CancellationToken ct);  // setoption 同步 + readyok
+    void Stop();                                      // 中断搜索，引擎仍回 bestmove（不当作错误）
 }
+// record 类型：EngineOptions(Threads/HashMb/EvalFile/LimitStrength/Elo/SkillLevel/HandshakeTimeout)
+//             GoParams(Fen/Moves/Depth/MoveTimeMs/Infinite/MultiPv)、SearchResult(BestMove/PonderMove)
+//             MultiPvInfo(Index/Depth/ScoreCp/IsMate/UpperBound/LowerBound/Pv)
 
 // Scripts/Game
-public sealed class GameSession {
-    public GameMode Mode { get; }                  // PlayWithEngine / Analyze
-    public bool Busy { get; }                      // 忙闲门闸：引擎思考中拒绝互斥操作或排队
-    public Task<Move> RequestEngineMoveAsync();
-    public Task<IReadOnlyList<MultiPvInfo>> AnalyzeAsync(int multiPv);
-    public void Undo();                            // 引擎回合连退两步
-    public Task<Move?> HintAsync();
+public sealed class GameSession : IDisposable {
+    public GameMode Mode { get; }                  // TwoPlayers / PlayWithEngine
+    public bool Busy { get; }                      // 忙闲门闸：引擎思考中拒绝互斥操作
+    public bool IsGameOver { get; }                // 将死或困毙
+    public bool AttachEngine(IUciSession engine);  // 同实例重复附加幂等成功
+    public bool SetMode(GameMode mode);
+    public bool TryPlayMove(Move move);            // 人类走法（Busy/终局拒绝）
+    public Task<bool> RequestEngineMoveAsync(CancellationToken ct);  // 引擎应手（代际计数丢弃过期结果）
+    public bool Undo();                            // 人机连退两步，双人退一步
+    public Task<Move?> HintAsync(CancellationToken ct);
+    public void NewGame();                         // 思考中先取消搜索
+    public bool LoadFen(string fen);               // 非法 FEN 抛 FenFormatException
+    public Task<bool> ApplyEngineOptionsAsync(EngineOptions options, CancellationToken ct);
+    public event Action<MoveAppliedEventArgs>? MoveApplied;   // move/chinese/isCapture/isRedMove/isCheck/isCheckmate/isStalemate
+    public event Action? BoardReverted;            // 悔棋/新局/载入后全量重绘
+    public event Action<Move>? HintProvided;
+    public event Action<bool>? BusyChanged;
 }
 ```
 
@@ -199,10 +214,10 @@ public sealed class GameSession {
 19. [x] 验收：双人本地对弈完整可玩（headless 冒烟：炮二平五/黑方跳马/非走子方拦截/局面一致性全过）；桌面可视化交互待用户人工确认（AC-6 的 UI 部分）
 
 ### M4 对弈模式
-20. `UciSession.cs` 完整实现：握手/setoption/position/go/stop/info 解析，移植 ComputerPlayer.java 的解析逻辑 — `Scripts/Engine/UciSession.cs`
-21. `GameSession.cs`：人机对弈循环（人走→引擎应）、忙闲门闸、Undo（连退两步）、Hint — `Scripts/Game/GameSession.cs`
-22. 强度设置 UI：UCI_Elo/UCI_LimitStrength/Threads/Hash（Threads 按 CPU 核数默认） — `Scripts/UI/HudPanel.cs`
-23. 并发场景测试：对照参考项目 controller-state 状态图，覆盖「引擎思考中悔棋/停止/提示/退出」每条边 — `tests/`（GameSession 层单测，mock UciSession）
+20. [x] `UciSession.cs` 完整实现：握手（uci→uciok 15s 超时）/setoption（Threads/Hash/EvalFile/UCI_LimitStrength/UCI_Elo/Skill Level）/position+go/stop/info 解析（移植 ComputerPlayer.parseInfoCmd，只消费 depth/multipv/score/pv）；引擎进程退出故障化挂起搜索；接口抽象 IUciSession 供测试替换 — `Scripts/Engine/UciSession.cs`（含 GoParams/SearchResult/MultiPvInfo）、`Scripts/Engine/EngineOptions.cs`、`Scripts/Engine/UciEngineProcess.cs`（新增 Disconnected 事件）
+21. [x] `GameSession.cs`：人机对弈循环（人走→引擎应）、忙闲门闸（Busy 拒绝走子/悔棋/提示/切模式）、Undo（人机连退两步/双人退一步）、Hint（不落子）、NewGame（取消搜索 + 代际计数丢弃迟到 bestmove）、LoadFen（AC-8 导入入口，M6 剪贴板用）、ApplyEngineOptionsAsync — `Scripts/Game/GameSession.cs`、`Scripts/Game/GameTypes.cs`（GameMode/HistoryRecord/MoveAppliedEventArgs）
+22. [x] 强度设置 UI：限棋力开关 + Elo 滑条（1280-3199）/线程数（默认 CPU 核数）/置换表(MB) + 新局/悔棋/提示/模式切换按钮 + 状态栏；中文文本依赖系统字体回退 — `Scripts/UI/HudPanel.cs`、`Scenes/Main.tscn`
+23. [x] 并发场景测试：tests/Game.Tests（链接 Core/Engine/Game 源码，排除依赖 Godot 的 EnginePoc），FakeUciSession 覆盖「引擎思考中走子/悔棋/提示被拒、思考中新对局取消搜索并丢弃迟到 bestmove、对局结束拦截、连退两步、非法 FEN 保持局面」等 10 例 — `tests/Game.Tests/`
 
 ### M5 分析模式
 24. `AnalyzeAsync`：MultiPV=3~5，解析 info 行（score cp/mate、pv）— `Scripts/Game/GameSession.cs`、`Scripts/Engine/UciSession.cs`

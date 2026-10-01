@@ -9,6 +9,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Tests", "tests\Core.Tests\Core.Tests.csproj", "{3754E202-9385-4314-B404-7C28FD91125F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Game.Tests", "tests\Game.Tests\Game.Tests.csproj", "{3F049204-A620-4E33-8CF7-D291AE1B6015}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,11 +45,24 @@ Global
 		{3754E202-9385-4314-B404-7C28FD91125F}.Release|x64.Build.0 = Release|Any CPU
 		{3754E202-9385-4314-B404-7C28FD91125F}.Release|x86.ActiveCfg = Release|Any CPU
 		{3754E202-9385-4314-B404-7C28FD91125F}.Release|x86.Build.0 = Release|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Debug|x64.Build.0 = Debug|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Debug|x86.Build.0 = Debug|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Release|x64.ActiveCfg = Release|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Release|x64.Build.0 = Release|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Release|x86.ActiveCfg = Release|Any CPU
+		{3F049204-A620-4E33-8CF7-D291AE1B6015}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3754E202-9385-4314-B404-7C28FD91125F} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{3F049204-A620-4E33-8CF7-D291AE1B6015} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
