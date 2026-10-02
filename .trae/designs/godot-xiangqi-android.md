@@ -224,12 +224,13 @@ public sealed class GameSession : IDisposable {
 24. [x] `AnalyzeAsync`：MultiPV=3（DefaultAnalyzeMultiPv，go depth 14），InfoReceived 逐路保留最新 info（score cp/mate、pv），bestmove 后按 PV 序号排序返回；忙闲门闸内进行，代际计数丢弃过期结果 — `Scripts/Game/GameSession.cs`
 25. [x] `ArrowLayer.cs`：移植 ArrowShape 多边形参数（60°/120°、边长 80、头宽 26、尾宽 10）为 Godot `_Draw` 多边形；走子历史箭头 1.6s alpha 渐隐；MultiPV 建议箭头按排名 5 色分级 + digit1-5 角标 — `Scripts/UI/ArrowLayer.cs`、`Scenes/Board.tscn`（Arrows 节点）
 26. [x] 评估显示：当前局面分值（红方视角换算，mate 显示 #N/-#N）+ 历史评估列表（手数 + 建议着法中文记谱 + 分值），分析按钮触发，悔棋/新局清空 — `Scripts/UI/HudPanel.cs`、`Scripts/Main.cs`
+27. [x] 连续分析开关：分析按钮为开关（文案「分析」/「停止分析」，HudPanel.SetAnalysisActive）；开启后走子应用（双人模式即时、人机模式等引擎忙闲回落）、局面恢复（悔棋/新局/载入 FEN）、忙闲回落三处触发自动重新分析并刷新建议箭头与评估，无需每次点击；防重入标志 `_analysisRefreshing` 避免忙闲事件循环；进入练习模式自动停用并清显示；引擎忙时跳过刷新留待忙闲回落再触发 — `Scripts/Main.cs`（OnAnalyze/StopAnalysis/RefreshAnalysisAsync/ShowAnalysis）、`Scripts/UI/HudPanel.cs`
 
 ### M6 发布打磨
-27. [x] FEN 导入导出（系统剪贴板 DisplayServer.ClipboardSet/ClipboardGet），非法 FEN 状态栏显示出错字段与原因且不崩溃 — `Scripts/UI/HudPanel.cs`（FEN 行）、`Scripts/Main.cs`（OnCopyFen/OnPasteFen）
-28. [x] 关于页改为关于弹窗（AcceptDialog 代码构建，替代独立场景：避免场景切换丢失对局状态）：MIT 声明 + 「象棋鱼」素材来源声明 + Pikafish GPL-3.0 声明与源码指引（UCI 独立进程通信，非衍生作品） — `Scripts/Main.cs`（BuildAboutDialog）
-29. [ ] Android 签名导出 + release APK 真机回归（AC-1..AC-8 逐条过） — `export_presets.cfg`；待用户连接设备 + 配置发布密钥库（debug 密钥库已配置）
-30. [ ] `make check` 全绿收尾，提交并 make push — 全仓
+28. [x] FEN 导入导出（系统剪贴板 DisplayServer.ClipboardSet/ClipboardGet），非法 FEN 状态栏显示出错字段与原因且不崩溃 — `Scripts/UI/HudPanel.cs`（FEN 行）、`Scripts/Main.cs`（OnCopyFen/OnPasteFen）
+29. [x] 关于页改为关于弹窗（AcceptDialog 代码构建，替代独立场景：避免场景切换丢失对局状态）：MIT 声明 + 「象棋鱼」素材来源声明 + Pikafish GPL-3.0 声明与源码指引（UCI 独立进程通信，非衍生作品） — `Scripts/Main.cs`（BuildAboutDialog）
+30. [ ] Android 签名导出 + release APK 真机回归（AC-1..AC-8 逐条过） — `export_presets.cfg`；待用户连接设备 + 配置发布密钥库（debug 密钥库已配置）
+31. [ ] `make check` 全绿收尾，提交并 make push — 全仓
 
 ## Workspace setup
 

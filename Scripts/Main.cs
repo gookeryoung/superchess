@@ -23,6 +23,8 @@ public partial class Main : Node2D
     private ArrowLayer _arrows = null!;
     private SoundPlayer _soundPlayer = null!;
     private HudPanel _hud = null!;
+    private bool _analysisEnabled;
+    private bool _analysisRefreshing;
     private AcceptDialog _aboutDialog = null!;
     private AcceptDialog _lessonDialog = null!;
     private AcceptDialog _puzzleDialog = null!;
@@ -132,6 +134,7 @@ public partial class Main : Node2D
     /// <summary>载入课程：双人模式 + LoadFen + 控制器启动 + 练习模式联动。</summary>
     private void LoadLesson(LessonDefinition lesson)
     {
+        StopAnalysis();
         ClearPracticeControllers();
         _session.SetMode(GameMode.TwoPlayers);
         _hud.SetMode(GameMode.TwoPlayers, _session.EngineAvailable);
@@ -144,6 +147,7 @@ public partial class Main : Node2D
     /// <summary>载入残局题：流程同课程，主线步数并入提示。</summary>
     private void LoadPuzzle(PuzzleDefinition puzzle)
     {
+        StopAnalysis();
         ClearPracticeControllers();
         _session.SetMode(GameMode.TwoPlayers);
         _hud.SetMode(GameMode.TwoPlayers, _session.EngineAvailable);
@@ -312,6 +316,12 @@ public partial class Main : Node2D
         {
             _hud.SetStatus(e.IsRedMove ? "黑方困毙，红方胜" : "红方困毙，黑方胜");
         }
+
+        if (_analysisEnabled && _session.Mode != GameMode.PlayWithEngine)
+        {
+            // 双人模式走子后立即刷新；人机模式等引擎应手结束（忙闲回落）再刷新。
+            _ = RefreshAnalysisAsync();
+        }
     }
 
     /// <summary>局面整体恢复：重注入新局面实例并全量重绘，清空箭头与评估。</summary>
@@ -322,6 +332,10 @@ public partial class Main : Node2D
         _boardView.RenderBoard(_session.CurrentBoard);
         _arrows.ClearAll();
         _hud.ClearEval();
+        if (_analysisEnabled && !IsPracticing)
+        {
+            _ = RefreshAnalysisAsync();
+        }
     }
 
     /// <summary>显示引擎提示着法（选中框 + 落点标记，不落子）。</summary>
@@ -345,6 +359,11 @@ public partial class Main : Node2D
         {
             // 终局状态由 OnMoveApplied 写入，此处不覆盖。
             _hud.SetStatus(_session.Mode == GameMode.PlayWithEngine ? "人机对弈（执红）" : "双人对弈");
+            if (_analysisEnabled && !IsPracticing)
+            {
+                // 引擎应手/提示结束后自动刷新连续分析（刷新自身的忙闲回落经防重入标志跳过）。
+                _ = RefreshAnalysisAsync();
+            }
         }
     }
 
@@ -397,21 +416,62 @@ public partial class Main : Node2D
         // 提示着法的展示由 HintProvided 事件处理。
     }
 
-    /// <summary>分析当前局面：MultiPV 建议箭头 + 评估显示。</summary>
+    /// <summary>
+    /// 切换连续分析开关：开启后走子/悔棋/新局/引擎应手结束均自动重新分析并刷新
+    /// 建议箭头与评估，无需每次点击；关闭时清除建议显示。
+    /// </summary>
     private async void OnAnalyze()
     {
-        var infos = await _session.AnalyzeAsync(GameSession.DefaultAnalyzeMultiPv).ConfigureAwait(true);
-        if (infos.Count == 0)
+        if (_analysisEnabled)
         {
-            if (!_session.Busy)
-            {
-                _soundPlayer.Play(SoundEffect.Invalid);
-                _hud.SetStatus("引擎不可用或引擎思考中，无法分析");
-            }
-
+            StopAnalysis();
             return;
         }
 
+        _analysisEnabled = true;
+        _hud.SetAnalysisActive(true);
+        _hud.SetStatus("分析已开启，走子后自动刷新建议");
+        await RefreshAnalysisAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>关闭连续分析并清除建议箭头与评估显示。</summary>
+    private void StopAnalysis()
+    {
+        _analysisEnabled = false;
+        _hud.SetAnalysisActive(false);
+        _arrows.ClearAll();
+        _hud.ClearEval();
+    }
+
+    /// <summary>
+    /// 连续分析刷新：非练习、非终局且引擎空闲时重新分析当前局面；
+    /// 引擎忙时跳过，留待忙闲回落事件再触发。防重入标志避免忙闲事件循环。
+    /// </summary>
+    private async Task RefreshAnalysisAsync()
+    {
+        if (!_analysisEnabled || _analysisRefreshing || _session.Busy || IsPracticing || _session.IsGameOver)
+        {
+            return;
+        }
+
+        _analysisRefreshing = true;
+        try
+        {
+            var infos = await _session.AnalyzeAsync(GameSession.DefaultAnalyzeMultiPv).ConfigureAwait(true);
+            if (infos.Count > 0)
+            {
+                ShowAnalysis(infos);
+            }
+        }
+        finally
+        {
+            _analysisRefreshing = false;
+        }
+    }
+
+    /// <summary>显示分析结果：MultiPV 建议箭头 + 评估列表（当前分值 + 每路建议）。</summary>
+    private void ShowAnalysis(IReadOnlyList<MultiPvInfo> infos)
+    {
         var redToMove = _session.CurrentBoard.RedToMove;
         var suggestions = new List<(Vector2, Vector2)>();
         foreach (var info in infos)

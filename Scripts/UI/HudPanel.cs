@@ -186,6 +186,9 @@ public partial class HudPanel : PanelContainer
         _analyzeButton.Disabled = !engineAvailable;
     }
 
+    /// <summary>更新分析按钮文案以反映连续分析开关状态（开启后走子自动刷新建议）。</summary>
+    public void SetAnalysisActive(bool active) => _analyzeButton.Text = active ? "停止分析" : "分析";
+
     /// <summary>
     /// 进入/退出练习模式。练习中禁用切人机/提示/分析（悔棋=重玩、新局=退出由 Main 拦截语义）；
     /// 退出后由 Main 调 SetMode 恢复按钮可用性。
