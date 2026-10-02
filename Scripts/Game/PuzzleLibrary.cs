@@ -10,11 +10,11 @@ public static class PuzzleLibrary
     public static IReadOnlyList<PuzzleDefinition> All { get; } =
     [
         new(
-            "mate1-menggong",
-            "一步杀·重炮闷宫",
-            "红先一步杀：黑将闷在宫顶，马已被架住。找到制胜一着。",
+            "mate1-chongpao",
+            "一步杀·重炮",
+            "红先一步杀：红方车炮同线布下重炮阵。找到制胜一着。",
             1,
-            "3aka3/4n4/4R4/9/9/9/9/9/4C4/3K5 w - - 0 1",
+            "3aka3/4c4/4R4/4C4/9/9/9/9/4C4/3K5 w - - 0 1",
             ["e7e8"]),
     ];
 }

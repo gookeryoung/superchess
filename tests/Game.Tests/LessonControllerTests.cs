@@ -9,8 +9,8 @@ namespace SuperChess.Game.Tests;
 public class LessonControllerTests
 {
     private const string CheckingFen = "4k4/9/9/9/9/3R5/9/3n5/9/3K5 w";
-    private const string CaptureFen = "4k4/9/9/9/3cp5/9/4N4/9/9/3K5 w";
-    private const string MateFen = "3aka3/4n4/4R4/9/9/9/9/9/4C4/3K5 w";
+    private const string CaptureFen = "4k4/9/4N4/9/3c1p3/9/9/9/9/3K5 w";
+    private const string MateFen = "3aka3/4c4/4R4/4C4/9/9/9/9/4C4/3K5 w";
 
     [Fact]
     public void AnyMoveOfPiece_AcceptsTargetPieceMove_RejectsOtherPiece()
@@ -32,7 +32,7 @@ public class LessonControllerTests
         var controller = new LessonController();
         controller.Start(lesson);
 
-        var result = controller.Evaluate(board, new Move(new Position(4, 9), new Position(4, 8)));
+        var result = controller.Evaluate(board, new Move(new Position(3, 9), new Position(3, 8)));
         Assert.False(result.Accepted);
         Assert.NotEmpty(result.Message);
     }
@@ -62,8 +62,8 @@ public class LessonControllerTests
             "check-test", "将军", "车四平五将军", CheckingFen,
             new LessonGoal(LessonGoalKind.AnyCheckingMove), "完成"));
 
-        Assert.True(controller.Evaluate(board, Move.FromUcci("d5e5")!.Value).Accepted);
-        Assert.False(controller.Evaluate(board, Move.FromUcci("d5a5")!.Value).Accepted);
+        Assert.True(controller.Evaluate(board, Move.FromUcci("d4e4")!.Value).Accepted);
+        Assert.False(controller.Evaluate(board, Move.FromUcci("d4a4")!.Value).Accepted);
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class LessonControllerTests
             new LessonGoal(LessonGoalKind.AnyMateMove), "完成"));
 
         Assert.True(controller.Evaluate(board, Move.FromUcci("e7e8")!.Value).Accepted);
-        Assert.False(controller.Evaluate(board, Move.FromUcci("e7e6")!.Value).Accepted);
+        Assert.False(controller.Evaluate(board, Move.FromUcci("e7d7")!.Value).Accepted);
     }
 
     [Fact]

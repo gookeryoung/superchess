@@ -15,7 +15,7 @@ public static class LessonLibrary
             "move-knight",
             "马走日",
             "马走「日」字：先直一格再斜一格，紧邻的直格有子（蹩马腿）时不可走。点击红马，走到任意绿色落点。",
-            "4k4/9/9/9/9/9/9/4N4/9/4K4 w",
+            "4k4/9/4N4/9/9/9/9/9/9/3K5 w",
             new LessonGoal(LessonGoalKind.AnyMoveOfPiece, Piece.RedKnight),
             "马走日学会了！注意蹩马腿的位置。"),
     ];

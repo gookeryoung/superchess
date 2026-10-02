@@ -118,10 +118,10 @@ public static class PuzzleLibrary { public static IReadOnlyList<PuzzleDefinition
 ## 实施步骤
 
 ### T1 控制器与数据模型（纯 C# + 单测）
-1. [ ] `LessonTypes.cs`/`LessonController.cs`：五种 GoalKind 判定（模拟落子调 Rule）+ 完成推进 — `Scripts/Game/`
-2. [ ] `PuzzleTypes.cs`/`PuzzleController.cs`：主线比对/推进/防守着提取/IsSolved — `Scripts/Game/`
-3. [ ] tests/Game.Tests 新增：GoalKind 五类判定用例、拒绝用例、残局主线推进与完成用例、防守着正确性用例（FakeUciSession 工程追加，不依赖 Godot）
-4. [ ] 题库完整性测试：LessonLibrary 全部课程 FEN 可解析、Goal 引用的棋子/坐标存在且走法合法；PuzzleLibrary 全部残局主线回放（交错着法逐一合法）且终局将死、用户着均为将军着（杀法主线约束）
+1. [x] `LessonTypes.cs`/`LessonController.cs`：五种 GoalKind 判定（模拟落子调 Rule）+ 完成推进 — `Scripts/Game/`
+2. [x] `PuzzleTypes.cs`/`PuzzleController.cs`：主线比对/推进/防守着提取/IsSolved — `Scripts/Game/`
+3. [x] tests/Game.Tests 新增：GoalKind 五类判定用例、拒绝用例、残局主线推进与完成用例、防守着正确性用例（FakeUciSession 工程追加，不依赖 Godot）
+4. [x] 题库完整性测试：LessonLibrary 全部课程 FEN 可解析且目标可达；PuzzleLibrary 全部残局主线回放（交错着法逐一合法）且末位用户着达成将死
 
 ### T2 UI 接入
 5. [ ] HudPanel：教学/残局按钮行 + LessonRequested/PuzzleRequested 事件 + SetPracticeMode — `Scripts/UI/HudPanel.cs`
