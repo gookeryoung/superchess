@@ -17,13 +17,16 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="SuperChess"
 config/description="中国象棋训练与 AI 练习工具（Godot 跨平台版）"
 run/main_scene="res://Scenes/Main.tscn"
-config/features=PackedStringArray("4.7", "GL Compatibility")
+config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [display]
 
 window/size/viewport_width=1080
 window/size/viewport_height=1920
+; 桌面窗口初始尺寸减半，内容由 canvas_items 拉伸等比缩放；Android 手持端忽略此覆盖
+window/size/window_width_override=540
+window/size/window_height_override=960
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep_width"
 window/handheld/orientation=1

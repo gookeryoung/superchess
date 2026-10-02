@@ -1,8 +1,8 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3]
 
-[ext_resource type="Script" path="res://Scripts/Main.cs" id="1_main"]
+[ext_resource type="Script" uid="uid://dh6bvhjefk18b" path="res://Scripts/Main.cs" id="1_main"]
 [ext_resource type="PackedScene" path="res://Scenes/Board.tscn" id="2_board"]
-[ext_resource type="Script" path="res://Scripts/UI/HudPanel.cs" id="3_hud"]
+[ext_resource type="Script" uid="uid://b0knc4fg4os0q" path="res://Scripts/UI/HudPanel.cs" id="3_hud"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
