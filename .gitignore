@@ -34,4 +34,7 @@ obj/
 # 导出的引擎二进制不入库（体积大，单独分发管理）
 # engines/ 下如需入库请移除对应忽略行
 *.so
+# 桌面版 Pikafish（engines/windows/，从官方 release 手动放置；Copying.txt GPL 文本入库）
+engines/windows/*.exe
+engines/windows/pikafish.nnue
 android/build/libs/debug

@@ -2,7 +2,8 @@ namespace SuperChess.Engine;
 
 /// <summary>
 /// Pikafish 引擎文件定位：Android 上从 nativeLibraryDir 解析引擎/NNUE 路径，
-/// 并按 CPU dotprod 特性选择引擎变体（增强版失败可回退普通版）。
+/// 并按 CPU dotprod 特性选择引擎变体（增强版失败可回退普通版）；
+/// 桌面平台从项目 engines/windows/ 解析通用构建（需手动放置，不入库）。
 /// </summary>
 public static class EngineLocator
 {
@@ -10,6 +11,9 @@ public static class EngineLocator
     private const string PlainEngine = "libpikafish-armv8.so";
     private const string NnueFile = "libpikafish.nnue.so";
     private const string GodotLibName = "libgodot_android.so";
+
+    private const string WindowsEngine = "Pikafish-Windows-x86-64-universal.exe";
+    private const string WindowsNnue = "pikafish.nnue";
 
     /// <summary>
     /// 解析 Android 安装后的原生库目录（nativeLibraryDir）。
@@ -81,14 +85,15 @@ public static class EngineLocator
 
     /// <summary>
     /// 解析应使用的 Pikafish 引擎可执行文件绝对路径。
-    /// 优先 dotprod 增强版，不存在时回退普通版；均不可用返回 null。
+    /// Android：优先 dotprod 增强版，不存在时回退普通版；
+    /// 桌面：projectDir 下 engines/windows/ 的通用构建。均不可用返回 null。
     /// </summary>
-    public static string? ResolveEnginePath()
+    public static string? ResolveEnginePath(string? projectDir = null)
     {
         var libDir = GetNativeLibraryDir();
         if (libDir is null)
         {
-            return null;
+            return ResolveWindowsPath(projectDir, WindowsEngine);
         }
 
         string[] candidates = HasDotProd()
@@ -98,17 +103,30 @@ public static class EngineLocator
     }
 
     /// <summary>
-    /// 解析 NNUE 权重文件绝对路径（供 setoption EvalFile 使用）；不可用返回 null。
+    /// 解析 NNUE 权重文件绝对路径（供 setoption EvalFile 使用）；
+    /// Android 取 nativeLibraryDir，桌面取 engines/windows/；不可用返回 null。
     /// </summary>
-    public static string? ResolveNnuePath()
+    public static string? ResolveNnuePath(string? projectDir = null)
     {
         var libDir = GetNativeLibraryDir();
         if (libDir is null)
         {
-            return null;
+            return ResolveWindowsPath(projectDir, WindowsNnue);
         }
 
         var path = Path.Combine(libDir, NnueFile);
+        return File.Exists(path) ? path : null;
+    }
+
+    /// <summary>桌面分支：在 projectDir/engines/windows/ 下定位文件，缺失或未传目录返回 null。</summary>
+    private static string? ResolveWindowsPath(string? projectDir, string fileName)
+    {
+        if (string.IsNullOrEmpty(projectDir))
+        {
+            return null;
+        }
+
+        var path = Path.Combine(projectDir, "engines", "windows", fileName);
         return File.Exists(path) ? path : null;
     }
 }

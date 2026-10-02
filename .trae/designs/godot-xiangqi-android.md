@@ -215,7 +215,7 @@ public sealed class GameSession : IDisposable {
 19. [x] 验收：双人本地对弈完整可玩（headless 冒烟：炮二平五/黑方跳马/非走子方拦截/局面一致性全过）；桌面可视化交互待用户人工确认（AC-6 的 UI 部分）
 
 ### M4 对弈模式
-20. [x] `UciSession.cs` 完整实现：握手（uci→uciok 15s 超时）/setoption（Threads/Hash/EvalFile/UCI_LimitStrength/UCI_Elo/Skill Level）/position+go/stop/info 解析（移植 ComputerPlayer.parseInfoCmd，只消费 depth/multipv/score/pv）；引擎进程退出故障化挂起搜索；接口抽象 IUciSession 供测试替换 — `Scripts/Engine/UciSession.cs`（含 GoParams/SearchResult/MultiPvInfo）、`Scripts/Engine/EngineOptions.cs`、`Scripts/Engine/UciEngineProcess.cs`（新增 Disconnected 事件）
+20. [x] `UciSession.cs` 完整实现：握手（uci→uciok 15s 超时）/setoption（Threads/Hash/EvalFile/UCI_LimitStrength/UCI_Elo/Skill Level）/position+go/stop/info 解析（移植 ComputerPlayer.parseInfoCmd，只消费 depth/multipv/score/pv）；引擎进程退出故障化挂起搜索；接口抽象 IUciSession 供测试替换 — `Scripts/Engine/UciSession.cs`（含 GoParams/SearchResult/MultiPvInfo）、`Scripts/Engine/EngineOptions.cs`、`Scripts/Engine/UciEngineProcess.cs`（新增 Disconnected 事件）；EngineLocator 增加桌面分支（engines/windows/ 通用构建 + pikafish.nnue，从官方 release 手动放置不入库，Copying.txt GPL 文本入库） — `Scripts/Engine/EngineLocator.cs`
 21. [x] `GameSession.cs`：人机对弈循环（人走→引擎应）、忙闲门闸（Busy 拒绝走子/悔棋/提示/切模式）、Undo（人机连退两步/双人退一步）、Hint（不落子）、NewGame（取消搜索 + 代际计数丢弃迟到 bestmove）、LoadFen（AC-8 导入入口，M6 剪贴板用）、ApplyEngineOptionsAsync — `Scripts/Game/GameSession.cs`、`Scripts/Game/GameTypes.cs`（GameMode/HistoryRecord/MoveAppliedEventArgs）
 22. [x] 强度设置 UI：限棋力开关 + Elo 滑条（1280-3199）/线程数（默认 CPU 核数）/置换表(MB) + 新局/悔棋/提示/模式切换按钮 + 状态栏；中文文本依赖系统字体回退 — `Scripts/UI/HudPanel.cs`、`Scenes/Main.tscn`
 23. [x] 并发场景测试：tests/Game.Tests（链接 Core/Engine/Game 源码，排除依赖 Godot 的 EnginePoc），FakeUciSession 覆盖「引擎思考中走子/悔棋/提示被拒、思考中新对局取消搜索并丢弃迟到 bestmove、对局结束拦截、连退两步、非法 FEN 保持局面」等 10 例 — `tests/Game.Tests/`
@@ -254,7 +254,7 @@ public sealed class GameSession : IDisposable {
 
 - AC-1：`dotnet test`（perft 断言 + 规则用例）全绿
 - AC-2/AC-3：真机 adb 安装 release APK，完整对弈一局；PoC 期间用日志验证 uciok/NNUE/stop
-- AC-4：脚本化对拍——同一中局 FEN 分别以 UCI_Elo 1280/3133 各跑 5 局固定深度，出着差异 ≥ 3 处
+- AC-4：桌面已验证（2026-10-02，Windows Pikafish 2026-09-06：2 个测试局面 × 双方各 5 局 depth 12，出着差异 ≥3，Elo 1280 出着明显分散走弱）；真机安装后可复验
 - AC-5/AC-6/AC-7/AC-8：真机手工回归清单（M6 验收表逐条勾选）
 - AC-9：`make check` 退出码 0
 

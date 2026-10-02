@@ -288,10 +288,11 @@ public partial class Main : Node2D
         {
             if (!_session.EngineAvailable)
             {
-                var enginePath = EngineLocator.ResolveEnginePath();
+                var projectDir = ProjectSettings.GlobalizePath("res://");
+                var enginePath = EngineLocator.ResolveEnginePath(projectDir);
                 if (enginePath is null)
                 {
-                    _hud.SetStatus("未找到引擎（Android 版内置），双人模式可用");
+                    _hud.SetStatus("未找到引擎（Android 内置；桌面需放置 engines/windows/）");
                     _soundPlayer.Play(SoundEffect.Invalid);
                     return;
                 }
@@ -300,7 +301,10 @@ public partial class Main : Node2D
                 var uci = new UciSession();
                 try
                 {
-                    var options = _hud.CollectOptions() with { EvalFile = EngineLocator.ResolveNnuePath() };
+                    var options = _hud.CollectOptions() with
+                    {
+                        EvalFile = EngineLocator.ResolveNnuePath(projectDir),
+                    };
                     await uci.StartAsync(enginePath, options).ConfigureAwait(true);
                 }
                 catch (Exception e)
