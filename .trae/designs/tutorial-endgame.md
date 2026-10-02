@@ -128,17 +128,17 @@ public static class PuzzleLibrary { public static IReadOnlyList<PuzzleDefinition
 6. [x] Main：选题弹窗（ItemList 动态填充课程/题目列表）、活动控制器路由 OnMoveChosen、残局防守着延迟落子、完成/过关反馈、练习模式按钮联动 — `Scripts/Main.cs`
 
 ### T3 内容制作与收尾
-7. [ ] 入门课程 ≥8 课：帅/仕/相/马/车/炮/兵走法各 1 课 + 将军 + 将死（一步杀演示）+ 吃子（炮打）课；每课 FEN + 目标 + 讲解文案 — `Scripts/Game/LessonLibrary.cs`
-8. [ ] 残局题库 ≥8 题：一步杀×4（闷宫/马后炮/铁门栓/双车错类）+ 两步杀×3 + 三步杀×1；正解主线经桌面 Pikafish 对拍验证（REQ-7）— `Scripts/Game/PuzzleLibrary.cs`
+7. [x] 入门课程 10 课：帅/仕/相/马/车/炮/兵走法各 1 课 + 将军 + 将死（一步杀演示）+ 吃子（炮打）课；每课 FEN + 目标 + 讲解文案 — `Scripts/Game/LessonLibrary.cs`（FEN 黑将行 9 列校验由完整性测试拦截，"3k5" 而非 "3k4"）
+8. [x] 残局题库 8 题：一步杀×3（重炮/卧槽马/闷宫）+ 两步杀×3（双车错/马炮/双车胁士）+ 三步杀×1（马炮）+ 进阶四步杀×1（车炮破双士）；REQ-2「覆盖一步杀至三步杀」满足。主线由桌面 Pikafish（depth 16）逐层 bestmove 生成（`build/gen_puzzles.py`，不入库可随时重生成），经 pyffish 复核终局真将死（自动淘汰困毙线——黑方无子可动但未被将军的"杀"不收），红手各步经 MultiPV 对拍并列最优（REQ-7）— `Scripts/Game/PuzzleLibrary.cs`
 9. [ ] 真机回归：AC-1..AC-8 复验 + 新增教学/残局真机走查（并入 M6-29，待设备连接）
-10. [ ] `make check` 全绿收尾，同步 `.trae/docs/` 迭代记录与本设计文件勾选
+10. [x] `make check` 全绿收尾，同步 `.trae/docs/` 迭代记录与本设计文件勾选
 
 ## 验收标准（映射 REQ）
 
 - REQ-1/2/5：桌面手工走查每课/每题完整流程（正确推进、错误拒绝、完成反馈）
 - REQ-3/4：UI 手工走查（入口、练习中按钮禁用、悔棋重玩、新局退出）
 - REQ-6：`dotnet test` 含题库完整性测试全绿；`make check` 退出码 0
-- REQ-7：残局正解对拍记录（引擎 depth 12 与主线着法一致或分值并列最优）
+- REQ-7：残局正解对拍记录（引擎 depth 16 与主线着法一致或分值并列最优；`build/gen_puzzles.py --verify` 输出 8/8 OK）
 
 ## 风险与缓解
 
@@ -146,5 +146,5 @@ public static class PuzzleLibrary { public static IReadOnlyList<PuzzleDefinition
 |---|---|
 | 残局主线唯一性（用户走出主线外但同样制胜的着法被判错） | 提示文案引导回主线（教学工具定位）；v1 不做多正解分支，文档标注 |
 | 手工 FEN 写错导致课程不可玩 | T1 题库完整性测试前置拦截（合法性 + 目标可达性） |
-| AnyMateMove 判定遗漏困毙边界 | 判定实现复用 Rule.IsCheckmate（已含困毙语义），单测覆盖 |
+| 光将局面大量「困毙杀」终局（无将胜，非将死） | 主线生成脚本用 pyffish 复核终着将军且无合法着；题库完整性回放测试（Rule.IsCheckmate 不含困毙）兜底拒绝 |
 | 练习与对弈状态串扰（练习中事件污染对弈 UI） | 控制器生命周期由 Main 显式管理；退出练习一律 NewGame 复位 |
