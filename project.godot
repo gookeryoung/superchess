@@ -24,7 +24,6 @@ config/icon="res://icon.svg"
 
 window/size/viewport_width=1080
 window/size/viewport_height=1920
-; 桌面窗口初始尺寸减半，内容由 canvas_items 拉伸等比缩放；Android 手持端忽略此覆盖
 window/size/window_width_override=540
 window/size/window_height_override=960
 window/stretch/mode="canvas_items"
