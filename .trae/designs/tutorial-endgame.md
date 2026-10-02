@@ -124,8 +124,8 @@ public static class PuzzleLibrary { public static IReadOnlyList<PuzzleDefinition
 4. [x] 题库完整性测试：LessonLibrary 全部课程 FEN 可解析且目标可达；PuzzleLibrary 全部残局主线回放（交错着法逐一合法）且末位用户着达成将死
 
 ### T2 UI 接入
-5. [ ] HudPanel：教学/残局按钮行 + LessonRequested/PuzzleRequested 事件 + SetPracticeMode — `Scripts/UI/HudPanel.cs`
-6. [ ] Main：选题弹窗（ItemList 动态填充课程/题目列表）、活动控制器路由 OnMoveChosen、残局防守着延迟落子、完成/过关反馈、练习模式按钮联动 — `Scripts/Main.cs`
+5. [x] HudPanel：教学/残局按钮行 + LessonRequested/PuzzleRequested 事件 + SetPracticeMode — `Scripts/UI/HudPanel.cs`
+6. [x] Main：选题弹窗（ItemList 动态填充课程/题目列表）、活动控制器路由 OnMoveChosen、残局防守着延迟落子、完成/过关反馈、练习模式按钮联动 — `Scripts/Main.cs`
 
 ### T3 内容制作与收尾
 7. [ ] 入门课程 ≥8 课：帅/仕/相/马/车/炮/兵走法各 1 课 + 将军 + 将死（一步杀演示）+ 吃子（炮打）课；每课 FEN + 目标 + 讲解文案 — `Scripts/Game/LessonLibrary.cs`

@@ -48,6 +48,12 @@ public partial class HudPanel : PanelContainer
     /// <summary>用户请求查看关于/开源声明。</summary>
     public event Action? AboutRequested;
 
+    /// <summary>用户请求打开课程列表（入门指导）。</summary>
+    public event Action? LessonRequested;
+
+    /// <summary>用户请求打开残局题库列表。</summary>
+    public event Action? PuzzleRequested;
+
     /// <summary>强度设置变化（含完整选项快照）。</summary>
     public event Action<EngineOptions>? OptionsChanged;
 
@@ -57,6 +63,7 @@ public partial class HudPanel : PanelContainer
         AddChild(root);
 
         root.AddChild(BuildButtonRow());
+        root.AddChild(BuildPracticeRow());
         root.AddChild(BuildStrengthRow());
         root.AddChild(BuildResourceRow());
         root.AddChild(BuildFenRow());
@@ -117,6 +124,24 @@ public partial class HudPanel : PanelContainer
         return row;
     }
 
+    /// <summary>构建练习行（教学/残局入口，各半宽）。</summary>
+    private Control BuildPracticeRow()
+    {
+        var lessonButton = new Button { Text = "教学", CustomMinimumSize = new Vector2(0, 88) };
+        var puzzleButton = new Button { Text = "残局", CustomMinimumSize = new Vector2(0, 88) };
+        lessonButton.Pressed += () => LessonRequested?.Invoke();
+        puzzleButton.Pressed += () => PuzzleRequested?.Invoke();
+
+        var row = new HBoxContainer();
+        foreach (var button in new[] { lessonButton, puzzleButton })
+        {
+            button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            row.AddChild(button);
+        }
+
+        return row;
+    }
+
     /// <summary>构建 FEN 行（复制/粘贴/关于）。</summary>
     private Control BuildFenRow()
     {
@@ -159,6 +184,20 @@ public partial class HudPanel : PanelContainer
         _modeButton.Text = mode == GameMode.PlayWithEngine ? "切双人" : "切人机";
         _hintButton.Disabled = mode != GameMode.PlayWithEngine || !engineAvailable;
         _analyzeButton.Disabled = !engineAvailable;
+    }
+
+    /// <summary>
+    /// 进入/退出练习模式。练习中禁用切人机/提示/分析（悔棋=重玩、新局=退出由 Main 拦截语义）；
+    /// 退出后由 Main 调 SetMode 恢复按钮可用性。
+    /// </summary>
+    public void SetPracticeMode(bool practicing)
+    {
+        _modeButton.Disabled = practicing;
+        if (practicing)
+        {
+            _hintButton.Disabled = true;
+            _analyzeButton.Disabled = true;
+        }
     }
 
     /// <summary>构建强度行（限棋力开关 + Elo 滑条）。</summary>

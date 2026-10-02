@@ -16,12 +16,16 @@ public partial class Main : Node2D
     private const float BoardScale = 1080f / BoardView.NativeWidth;
 
     private readonly GameSession _session = new();
+    private readonly LessonController _lessonController = new();
+    private readonly PuzzleController _puzzleController = new();
     private BoardView _boardView = null!;
     private BoardInput _boardInput = null!;
     private ArrowLayer _arrows = null!;
     private SoundPlayer _soundPlayer = null!;
     private HudPanel _hud = null!;
     private AcceptDialog _aboutDialog = null!;
+    private AcceptDialog _lessonDialog = null!;
+    private AcceptDialog _puzzleDialog = null!;
 
     public override void _Ready()
     {
@@ -33,6 +37,14 @@ public partial class Main : Node2D
         AddChild(_soundPlayer);
         _aboutDialog = BuildAboutDialog();
         AddChild(_aboutDialog);
+        _lessonDialog = BuildPickerDialog(
+            "选择课程", [.. LessonLibrary.All.Select(l => l.Title)],
+            index => LoadLesson(LessonLibrary.All[index]));
+        AddChild(_lessonDialog);
+        _puzzleDialog = BuildPickerDialog(
+            "选择残局", [.. PuzzleLibrary.All.Select(p => p.Title)],
+            index => LoadPuzzle(PuzzleLibrary.All[index]));
+        AddChild(_puzzleDialog);
 
         _boardView.Scale = new Vector2(BoardScale, BoardScale);
         _boardInput.Board = _session.CurrentBoard;
@@ -54,7 +66,161 @@ public partial class Main : Node2D
         _hud.CopyFenRequested += OnCopyFen;
         _hud.PasteFenRequested += OnPasteFen;
         _hud.AboutRequested += () => _aboutDialog.PopupCentered();
+        _hud.LessonRequested += OnLessonRequested;
+        _hud.PuzzleRequested += OnPuzzleRequested;
         _hud.Position = new Vector2(0, BoardView.NativeHeight * BoardScale + 16);
+    }
+
+    /// <summary>构建通用选择弹窗：ItemList 列表 + 确认按钮，选中项回调 onPick。</summary>
+    private static AcceptDialog BuildPickerDialog(string title, string[] items, Action<int> onPick)
+    {
+        var dialog = new AcceptDialog { Title = title, OkButtonText = "开始" };
+        var list = new ItemList { CustomMinimumSize = new Vector2(620, 420) };
+        foreach (var item in items)
+        {
+            list.AddItem(item);
+        }
+
+        var selected = -1;
+        list.ItemSelected += index => selected = (int)index;
+        dialog.Confirmed += () =>
+        {
+            if (selected >= 0)
+            {
+                onPick(selected);
+            }
+        };
+        dialog.AddChild(list);
+        return dialog;
+    }
+
+    /// <summary>是否处于教学/残局练习模式。</summary>
+    private bool IsPracticing =>
+        _lessonController.Current is not null || _puzzleController.Current is not null;
+
+    /// <summary>清除两个练习控制器（不改变对局状态；换题与退出共用）。</summary>
+    private void ClearPracticeControllers()
+    {
+        _lessonController.Reset();
+        _puzzleController.Clear();
+    }
+
+    /// <summary>退出练习回对弈：复位初始局面并恢复 HUD 按钮可用性。</summary>
+    private void ExitPractice()
+    {
+        ClearPracticeControllers();
+        _boardInput.InputEnabled = true;
+        _session.NewGame();
+        _hud.SetPracticeMode(false);
+        _hud.SetMode(GameMode.TwoPlayers, _session.EngineAvailable);
+        _hud.SetStatus("双人对弈");
+    }
+
+    /// <summary>教学/残局入口共用的 Busy 门闸：引擎思考中拒绝打开弹窗。</summary>
+    private void TryOpenPicker(AcceptDialog dialog)
+    {
+        if (_session.Busy)
+        {
+            _soundPlayer.Play(SoundEffect.Invalid);
+            _hud.SetStatus("引擎思考中，无法进入练习");
+            return;
+        }
+
+        dialog.PopupCentered();
+    }
+
+    /// <summary>载入课程：双人模式 + LoadFen + 控制器启动 + 练习模式联动。</summary>
+    private void LoadLesson(LessonDefinition lesson)
+    {
+        ClearPracticeControllers();
+        _session.SetMode(GameMode.TwoPlayers);
+        _hud.SetMode(GameMode.TwoPlayers, _session.EngineAvailable);
+        _session.LoadFen(lesson.Fen);
+        _lessonController.Start(lesson);
+        _hud.SetPracticeMode(true);
+        _hud.SetStatus($"【{lesson.Title}】{lesson.Intro}");
+    }
+
+    /// <summary>载入残局题：流程同课程，主线步数并入提示。</summary>
+    private void LoadPuzzle(PuzzleDefinition puzzle)
+    {
+        ClearPracticeControllers();
+        _session.SetMode(GameMode.TwoPlayers);
+        _hud.SetMode(GameMode.TwoPlayers, _session.EngineAvailable);
+        _session.LoadFen(puzzle.Fen);
+        _puzzleController.Start(puzzle);
+        _hud.SetPracticeMode(true);
+        _hud.SetStatus($"【{puzzle.Title}】{puzzle.Description}（共 {_puzzleController.TotalUserMoves} 步）");
+    }
+
+    /// <summary>课程走子处理：先行校验，拒绝不动局面；接受落子并判定完成。</summary>
+    private void HandleLessonMove(Move move)
+    {
+        var lesson = _lessonController.Current!;
+        var result = _lessonController.Evaluate(_session.CurrentBoard, move);
+        if (!result.Accepted)
+        {
+            _soundPlayer.Play(SoundEffect.Invalid);
+            _hud.SetStatus($"【{lesson.Title}】{result.Message}");
+            return;
+        }
+
+        if (!_session.TryPlayMove(move))
+        {
+            _soundPlayer.Play(SoundEffect.Invalid);
+            return;
+        }
+
+        if (_lessonController.ConsumeApplied())
+        {
+            _soundPlayer.Play(SoundEffect.Checkmate);
+            _hud.SetStatus($"【{lesson.Title}】{lesson.SuccessText}");
+        }
+    }
+
+    /// <summary>残局走子处理：主线比对；正确后延迟落防守着，末步过关。</summary>
+    private void HandlePuzzleMove(Move move)
+    {
+        var puzzle = _puzzleController.Current!;
+        var result = _puzzleController.Evaluate(move);
+        if (!result.Accepted)
+        {
+            _soundPlayer.Play(SoundEffect.Invalid);
+            _hud.SetStatus($"【{puzzle.Title}】{result.Message}");
+            return;
+        }
+
+        if (!_session.TryPlayMove(move))
+        {
+            _soundPlayer.Play(SoundEffect.Invalid);
+            return;
+        }
+
+        if (result.DefenseReply is { } defense)
+        {
+            _hud.SetStatus($"【{puzzle.Title}】{result.Message}");
+            _ = PlayDefenseAsync(defense);
+        }
+        else
+        {
+            _soundPlayer.Play(SoundEffect.Checkmate);
+            _hud.SetStatus($"【{puzzle.Title}】{result.Message} 正解完成！");
+        }
+    }
+
+    /// <summary>延迟落防守着；期间锁定棋盘输入，退出练习则放弃。</summary>
+    private async Task PlayDefenseAsync(Move defense)
+    {
+        _boardInput.InputEnabled = false;
+        await ToSignal(GetTree().CreateTimer(0.6), SceneTreeTimer.SignalName.Timeout);
+        if (!IsPracticing || _puzzleController.IsSolved)
+        {
+            _boardInput.InputEnabled = true;
+            return;
+        }
+
+        _session.TryPlayMove(defense);
+        _boardInput.InputEnabled = true;
     }
 
     /// <summary>构建关于弹窗（MIT 声明 + Pikafish GPL-3.0 声明与源码指引）。</summary>
@@ -83,10 +249,22 @@ public partial class Main : Node2D
         _session.Dispose();
     }
 
-    /// <summary>应用人类走法；人机模式下触发引擎应手。</summary>
+    /// <summary>应用走法：练习模式先过控制器先行校验，对弈模式直接落子（人机触发引擎应手）。</summary>
     private void OnMoveChosen(int fromX, int fromY, int toX, int toY)
     {
         var move = new Move(new Position(fromX, fromY), new Position(toX, toY));
+        if (_lessonController.Current is not null)
+        {
+            HandleLessonMove(move);
+            return;
+        }
+
+        if (_puzzleController.Current is not null)
+        {
+            HandlePuzzleMove(move);
+            return;
+        }
+
         if (!_session.TryPlayMove(move))
         {
             _soundPlayer.Play(SoundEffect.Invalid);
@@ -170,14 +348,38 @@ public partial class Main : Node2D
         }
     }
 
+    /// <summary>新局请求：练习模式中退出练习回对弈；对弈模式复位初始局面。</summary>
     private void OnNewGame()
     {
+        if (IsPracticing)
+        {
+            ExitPractice();
+            return;
+        }
+
         _session.NewGame();
         _hud.SetStatus(_session.Mode == GameMode.PlayWithEngine ? "人机对弈（执红）" : "双人对弈");
     }
 
+    /// <summary>悔棋请求：练习模式中重玩本课/本题；对弈模式回退一步。</summary>
     private void OnUndo()
     {
+        if (_lessonController.Current is { } lesson)
+        {
+            _session.LoadFen(lesson.Fen);
+            _lessonController.Reset();
+            _hud.SetStatus($"【{lesson.Title}】重新开始：{lesson.Intro}");
+            return;
+        }
+
+        if (_puzzleController.Current is { } puzzle)
+        {
+            _session.LoadFen(puzzle.Fen);
+            _puzzleController.Reset();
+            _hud.SetStatus($"【{puzzle.Title}】重新开始：{puzzle.Description}");
+            return;
+        }
+
         if (!_session.Undo())
         {
             _soundPlayer.Play(SoundEffect.Invalid);
@@ -334,6 +536,12 @@ public partial class Main : Node2D
             _hud.SetStatus("双人对弈");
         }
     }
+
+    /// <summary>打开课程列表（引擎思考中拒绝）。</summary>
+    private void OnLessonRequested() => TryOpenPicker(_lessonDialog);
+
+    /// <summary>打开残局题库列表（引擎思考中拒绝）。</summary>
+    private void OnPuzzleRequested() => TryOpenPicker(_puzzleDialog);
 
     /// <summary>强度设置变化：非思考状态下同步到引擎。</summary>
     private async void OnOptionsChanged(EngineOptions options)
