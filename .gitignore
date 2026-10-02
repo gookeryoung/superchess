@@ -34,3 +34,4 @@ obj/
 # 导出的引擎二进制不入库（体积大，单独分发管理）
 # engines/ 下如需入库请移除对应忽略行
 *.so
+android/build/libs/debug
