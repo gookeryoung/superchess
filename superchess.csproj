@@ -9,4 +9,8 @@
     <!-- 独立测试工程按源码链接方式编译 Core，主工程排除 tests 目录避免重复编译 -->
     <DefaultItemExcludes>$(DefaultItemExcludes);tests/**</DefaultItemExcludes>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- XQF 棋谱 GB18030 解码所需（net8.0 默认不含），微软官方纯托管包，AOT 安全 -->
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+  </ItemGroup>
 </Project>
