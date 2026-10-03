@@ -30,4 +30,4 @@ format: ## 自动修复代码风格
 check: lint build test ## 运行全套门禁（format 校验 + 全量构建 + 测试）
 
 push: ## 推送代码到所有远程仓库（含标签）
-	@powershell -NoProfile -Command "git remote | ForEach-Object { Write-Host ('推送 ' + $$_.ToString() + '...'); git push $$_.ToString(); git push $$_.ToString() --tags }"
+	@powershell -NoProfile -Command "git remote | ForEach-Object { Write-Host ('Push to ' + $$_.ToString() + '...'); git push $$_.ToString(); git push $$_.ToString() --tags }"
