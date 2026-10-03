@@ -21,29 +21,67 @@ public class LibraryIntegrityTests
     }
 
     [Fact]
-    public void Puzzles_FenValid_MainlineLegalAndEndsWithCheckmate()
+    public void Puzzles_FenValid_TreeLegalAndEndsWithCheckmate()
     {
-        Assert.NotEmpty(PuzzleLibrary.All);
+        Assert.True(PuzzleLibrary.All.Count >= 30,
+            $"题库共 {PuzzleLibrary.All.Count} 题，AC-P4 要求 ≥30 题");
         foreach (var puzzle in PuzzleLibrary.All)
         {
             var board = Board.FromFen(puzzle.Fen);
-            Assert.True(puzzle.Mainline.Length > 0, $"题目 {puzzle.Id} 主线为空");
-            Assert.True(puzzle.Mainline.Length % 2 == 1, $"题目 {puzzle.Id} 主线应以用户着收尾");
+            Assert.True(puzzle.Difficulty >= 1 && puzzle.Difficulty <= 4,
+                $"题目 {puzzle.Id} 难度 {puzzle.Difficulty} 越界");
+            ReplayChildren(board, puzzle.Root, puzzle.Id);
+        }
+    }
 
-            foreach (var ucci in puzzle.Mainline)
+    [Fact]
+    public void Puzzles_IdsUnique()
+    {
+        var ids = PuzzleLibrary.All.Select(p => p.Id).ToList();
+        Assert.Equal(ids.Count, ids.Distinct().Count());
+    }
+
+    /// <summary>
+    /// 递归回放着法树所有路径：用户着层（父深度偶）允许并列正解分支，
+    /// 防守着层恒单线；用户着收尾（无后续防守）必须达成将死。
+    /// </summary>
+    private static void ReplayChildren(Board board, PuzzleMoveNode node, string puzzleId)
+    {
+        if (node.Children.Count == 0)
+        {
+            if (!node.IsRoot)
             {
-                var move = Move.FromUcci(ucci);
-                Assert.NotNull(move);
-                Assert.True(
-                    Rule.IsLegalMove(board, move!.Value),
-                    $"题目 {puzzle.Id} 主线着法 {ucci} 在局面中非法");
-                board.DoMove(move!.Value);
+                Assert.True(node.Depth % 2 == 1,
+                    $"题目 {puzzleId} 树在防守着深度 {node.Depth} 处中断");
             }
 
-            // 末位用户着（红方）走完后翻边，黑方被将死。
-            Assert.True(
-                Rule.IsCheckmate(board, board.RedToMove),
-                $"题目 {puzzle.Id} 主线走完后未达成将死");
+            return;
+        }
+
+        if (node.Depth % 2 == 1)
+        {
+            Assert.True(node.Children.Count == 1,
+                $"题目 {puzzleId} 用户着层出现多防守分支（深度 {node.Depth}）");
+        }
+
+        foreach (var child in node.Children)
+        {
+            var move = Move.FromUcci(child.Ucci);
+            Assert.True(move is not null,
+                $"题目 {puzzleId} 节点含非法 UCCI：{child.Ucci}");
+            Assert.True(Rule.IsLegalMove(board, move!.Value),
+                $"题目 {puzzleId} 着法 {child.Ucci}（深度 {child.Depth}）在局面中非法");
+            var sim = board.Clone();
+            sim.DoMove(move!.Value);
+            if (child.Depth % 2 == 1 && child.Children.Count == 0)
+            {
+                Assert.True(Rule.IsCheckmate(sim, sim.RedToMove),
+                    $"题目 {puzzleId} 用户着 {child.Ucci} 收尾未达成将死");
+            }
+            else
+            {
+                ReplayChildren(sim, child, puzzleId);
+            }
         }
     }
 

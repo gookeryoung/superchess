@@ -25,9 +25,16 @@ public partial class Main : Node2D
         ("res://assets/manuals/demo_v16.xqf", "残局短局·两步（高版本加密）"),
     ];
 
+    /// <summary>残局进度持久化文件（user:// 为应用私有存储）。</summary>
+    private const string ProgressPath = "user://puzzle_progress.json";
+
+    /// <summary>残局难度分组标题（弹窗列表按此分组展示）。</summary>
+    private static readonly string[] DifficultyLabels = ["一步杀", "两步杀", "三步杀", "进阶（四步及以上）"];
+
     private readonly GameSession _session = new();
     private readonly LessonController _lessonController = new();
     private readonly PuzzleController _puzzleController = new();
+    private PuzzleProgress _progress = new();
     private readonly ManualController _manualController = new();
     private BoardView _boardView = null!;
     private BoardInput _boardInput = null!;
@@ -41,6 +48,7 @@ public partial class Main : Node2D
     private AcceptDialog _puzzleDialog = null!;
     private AcceptDialog _manualDialog = null!;
     private FileDialog _fileDialog = null!;
+    private int _puzzleSelected = -1;
 
     public override void _Ready()
     {
@@ -56,14 +64,13 @@ public partial class Main : Node2D
             "选择课程", [.. LessonLibrary.All.Select(l => l.Title)],
             index => LoadLesson(LessonLibrary.All[index]));
         AddChild(_lessonDialog);
-        _puzzleDialog = BuildPickerDialog(
-            "选择残局", [.. PuzzleLibrary.All.Select(p => p.Title)],
-            index => LoadPuzzle(PuzzleLibrary.All[index]));
+        _puzzleDialog = BuildPuzzleDialog();
         AddChild(_puzzleDialog);
         _manualDialog = BuildManualDialog();
         AddChild(_manualDialog);
         _fileDialog = BuildFileDialog();
         AddChild(_fileDialog);
+        LoadProgress();
 
         _boardView.Scale = new Vector2(BoardScale, BoardScale);
         _boardInput.Board = _session.CurrentBoard;
@@ -118,6 +125,77 @@ public partial class Main : Node2D
         return dialog;
     }
 
+    /// <summary>
+    /// 构建残局选题弹窗：按难度分组展示（一步杀/两步杀/三步杀/进阶），
+    /// 条目标注过关标记与挑战次数；每次弹出前按当前进度刷新列表。
+    /// </summary>
+    private AcceptDialog BuildPuzzleDialog()
+    {
+        var dialog = new AcceptDialog { Title = "选择残局", OkButtonText = "开始" };
+        var list = new ItemList { CustomMinimumSize = new Vector2(620, 460) };
+        List<int> mapping = [];
+        list.ItemSelected += index => _puzzleSelected = mapping[(int)index];
+        dialog.Confirmed += () =>
+        {
+            if (_puzzleSelected >= 0)
+            {
+                LoadPuzzle(PuzzleLibrary.All[_puzzleSelected]);
+            }
+        };
+        // Window 无 AboutToShow：用 VisibilityChanged 在弹出时按当前进度刷新列表
+        dialog.VisibilityChanged += () =>
+        {
+            if (!dialog.Visible)
+            {
+                return;
+            }
+
+            list.Clear();
+            mapping.Clear();
+            _puzzleSelected = -1;
+            var lastDifficulty = 0;
+            for (var i = 0; i < PuzzleLibrary.All.Count; i++)
+            {
+                var puzzle = PuzzleLibrary.All[i];
+                if (puzzle.Difficulty != lastDifficulty)
+                {
+                    lastDifficulty = puzzle.Difficulty;
+                    var label = puzzle.Difficulty <= DifficultyLabels.Length
+                        ? DifficultyLabels[puzzle.Difficulty - 1]
+                        : $"难度 {puzzle.Difficulty}";
+                    var header = list.AddItem($"—— {label} ——");
+                    list.SetItemDisabled(header, true);
+                }
+
+                mapping.Add(i);
+                var solvedMark = _progress.IsSolved(puzzle.Id) ? "√ " : string.Empty;
+                var attempts = _progress.Attempts(puzzle.Id);
+                var attemptText = attempts > 0 ? $"（挑战 {attempts} 次）" : string.Empty;
+                list.AddItem($"{solvedMark}{puzzle.Title}{attemptText}");
+            }
+        };
+        dialog.AddChild(list);
+        return dialog;
+    }
+
+    /// <summary>从 user:// 读取残局进度（文件不存在或损坏时以空进度启动）。</summary>
+    private void LoadProgress()
+    {
+        if (!Godot.FileAccess.FileExists(ProgressPath))
+        {
+            return;
+        }
+
+        _progress = PuzzleProgress.FromJson(Godot.FileAccess.GetFileAsString(ProgressPath));
+    }
+
+    /// <summary>将残局进度写入 user://（过关时调用）。</summary>
+    private void SaveProgress()
+    {
+        using var file = Godot.FileAccess.Open(ProgressPath, Godot.FileAccess.ModeFlags.Write);
+        file?.StoreString(_progress.ToJson());
+    }
+
     /// <summary>是否处于教学/残局/打谱练习模式（四态模式路由的练习侧判定）。</summary>
     private bool IsPracticing =>
         _lessonController.Current is not null || _puzzleController.Current is not null
@@ -169,7 +247,7 @@ public partial class Main : Node2D
         _hud.SetStatus($"【{lesson.Title}】{lesson.Intro}");
     }
 
-    /// <summary>载入残局题：流程同课程，主线步数并入提示。</summary>
+    /// <summary>载入残局题：流程同课程 + 记录挑战次数，主线步数并入提示。</summary>
     private void LoadPuzzle(PuzzleDefinition puzzle)
     {
         StopAnalysis();
@@ -178,6 +256,7 @@ public partial class Main : Node2D
         _hud.SetMode(GameMode.TwoPlayers, _session.EngineAvailable);
         _session.LoadFen(puzzle.Fen);
         _puzzleController.Start(puzzle);
+        _progress.MarkAttempt(puzzle.Id);
         _hud.SetPracticeMode(true);
         _hud.SetStatus($"【{puzzle.Title}】{puzzle.Description}（共 {_puzzleController.TotalUserMoves} 步）");
     }
@@ -233,6 +312,8 @@ public partial class Main : Node2D
         else
         {
             _soundPlayer.Play(SoundEffect.Checkmate);
+            _progress.MarkSolved(puzzle.Id);
+            SaveProgress();
             _hud.SetStatus($"【{puzzle.Title}】{result.Message} 正解完成！");
         }
     }
