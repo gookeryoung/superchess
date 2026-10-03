@@ -23,6 +23,7 @@ public partial class HudPanel : PanelContainer
     private Label _statusLabel = null!;
     private Label _evalLabel = null!;
     private ItemList _evalList = null!;
+    private Control _manualRow = null!;
 
     /// <summary>用户请求开始新对局。</summary>
     public event Action? NewGameRequested;
@@ -54,6 +55,21 @@ public partial class HudPanel : PanelContainer
     /// <summary>用户请求打开残局题库列表。</summary>
     public event Action? PuzzleRequested;
 
+    /// <summary>用户请求打开打谱棋谱列表。</summary>
+    public event Action? ManualRequested;
+
+    /// <summary>打谱：请求前进主线一步（多分支节点由 Main 显示分支箭头等待选择）。</summary>
+    public event Action? ManualForwardRequested;
+
+    /// <summary>打谱：请求后退一步。</summary>
+    public event Action? ManualBackRequested;
+
+    /// <summary>打谱：请求回到开局。</summary>
+    public event Action? ManualRewindRequested;
+
+    /// <summary>打谱：请求载入另一份棋谱。</summary>
+    public event Action? ManualLoadRequested;
+
     /// <summary>强度设置变化（含完整选项快照）。</summary>
     public event Action<EngineOptions>? OptionsChanged;
 
@@ -64,6 +80,9 @@ public partial class HudPanel : PanelContainer
 
         root.AddChild(BuildButtonRow());
         root.AddChild(BuildPracticeRow());
+        _manualRow = BuildManualRow();
+        _manualRow.Visible = false;
+        root.AddChild(_manualRow);
         root.AddChild(BuildStrengthRow());
         root.AddChild(BuildResourceRow());
         root.AddChild(BuildFenRow());
@@ -124,16 +143,40 @@ public partial class HudPanel : PanelContainer
         return row;
     }
 
-    /// <summary>构建练习行（教学/残局入口，各半宽）。</summary>
+    /// <summary>构建练习行（教学/残局/打谱入口，各三分之一宽）。</summary>
     private Control BuildPracticeRow()
     {
         var lessonButton = new Button { Text = "教学", CustomMinimumSize = new Vector2(0, 88) };
         var puzzleButton = new Button { Text = "残局", CustomMinimumSize = new Vector2(0, 88) };
+        var manualButton = new Button { Text = "打谱", CustomMinimumSize = new Vector2(0, 88) };
         lessonButton.Pressed += () => LessonRequested?.Invoke();
         puzzleButton.Pressed += () => PuzzleRequested?.Invoke();
+        manualButton.Pressed += () => ManualRequested?.Invoke();
 
         var row = new HBoxContainer();
-        foreach (var button in new[] { lessonButton, puzzleButton })
+        foreach (var button in new[] { lessonButton, puzzleButton, manualButton })
+        {
+            button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            row.AddChild(button);
+        }
+
+        return row;
+    }
+
+    /// <summary>构建打谱导航行（前进/后退/回开局/载入棋谱，默认隐藏）。</summary>
+    private Control BuildManualRow()
+    {
+        var forwardButton = new Button { Text = "前进", CustomMinimumSize = new Vector2(0, 88) };
+        var backButton = new Button { Text = "后退", CustomMinimumSize = new Vector2(0, 88) };
+        var rewindButton = new Button { Text = "回开局", CustomMinimumSize = new Vector2(0, 88) };
+        var loadButton = new Button { Text = "载入棋谱", CustomMinimumSize = new Vector2(0, 88) };
+        forwardButton.Pressed += () => ManualForwardRequested?.Invoke();
+        backButton.Pressed += () => ManualBackRequested?.Invoke();
+        rewindButton.Pressed += () => ManualRewindRequested?.Invoke();
+        loadButton.Pressed += () => ManualLoadRequested?.Invoke();
+
+        var row = new HBoxContainer();
+        foreach (var button in new[] { forwardButton, backButton, rewindButton, loadButton })
         {
             button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             row.AddChild(button);
@@ -190,8 +233,8 @@ public partial class HudPanel : PanelContainer
     public void SetAnalysisActive(bool active) => _analyzeButton.Text = active ? "停止分析" : "分析";
 
     /// <summary>
-    /// 进入/退出练习模式。练习中禁用切人机/提示/分析（悔棋=重玩、新局=退出由 Main 拦截语义）；
-    /// 退出后由 Main 调 SetMode 恢复按钮可用性。
+    /// 进入/退出练习模式（教学/残局/打谱共用）。练习中禁用切人机/提示/分析
+    /// （悔棋/新局语义由 Main 拦截）；退出后由 Main 调 SetMode 恢复按钮可用性。
     /// </summary>
     public void SetPracticeMode(bool practicing)
     {
@@ -202,6 +245,9 @@ public partial class HudPanel : PanelContainer
             _analyzeButton.Disabled = true;
         }
     }
+
+    /// <summary>进入/退出打谱模式：显隐打谱导航行（其余互斥按钮经 SetPracticeMode 处理）。</summary>
+    public void SetManualMode(bool manual) => _manualRow.Visible = manual;
 
     /// <summary>构建强度行（限棋力开关 + Elo 滑条）。</summary>
     private Control BuildStrengthRow()

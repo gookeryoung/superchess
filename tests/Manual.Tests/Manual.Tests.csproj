@@ -10,9 +10,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Manual 层为零 Godot 依赖的纯 C#，按设计链接源文件编译（同 Game.Tests 模式） -->
+    <!-- Manual/Game 层均为零 Godot 依赖的纯 C#，按设计链接源文件编译（同 Game.Tests 模式）；
+         链接 Game 层以覆盖 ManualController 与 GameSession 的打谱协作语义 -->
     <Compile Include="..\..\Scripts\Core\**\*.cs" LinkBase="Core" />
+    <Compile Include="..\..\Scripts\Engine\**\*.cs" LinkBase="Engine" Exclude="..\..\Scripts\Engine\EnginePoc.cs" />
     <Compile Include="..\..\Scripts\Manual\**\*.cs" LinkBase="Manual" />
+    <Compile Include="..\..\Scripts\Game\**\*.cs" LinkBase="Game" />
   </ItemGroup>
 
   <ItemGroup>

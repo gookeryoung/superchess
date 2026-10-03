@@ -2,22 +2,33 @@ using Godot;
 using SuperChess.Core;
 using SuperChess.Engine;
 using SuperChess.Game;
+using SuperChess.Manual;
 using SuperChess.UI;
 
 namespace SuperChess;
 
 /// <summary>
-/// M4 场景入口：GameSession 持有对局状态，装配棋盘视图、输入、音效与控制面板，
-/// 驱动双人/人机对弈回合流转（引擎思考中经 Busy 门闸拒绝互斥操作）。
+/// 场景入口：GameSession 持有对局状态，装配棋盘视图、输入、音效与控制面板。
+/// 模式路由集中处理四种状态——双人/人机对弈、教学、残局、打谱
+/// （练习控制器先行校验，落子仍经 GameSession 统一落地）。
 /// </summary>
 public partial class Main : Node2D
 {
     /// <summary>棋盘整体缩放：底图 1240 宽等比缩放至 1080 视口宽。</summary>
     private const float BoardScale = 1080f / BoardView.NativeWidth;
 
+    /// <summary>内置示例棋谱（打包进 assets/manuals/；Android 无文件选择器降级入口）。</summary>
+    private static readonly (string Path, string Name)[] BuiltinManuals =
+    [
+        ("res://assets/manuals/realgame.xqf", "实战对局·中炮对屏风马（含变着）"),
+        ("res://assets/manuals/demo_v10.xqf", "开局演示·当头炮（变着与注释）"),
+        ("res://assets/manuals/demo_v16.xqf", "残局短局·两步（高版本加密）"),
+    ];
+
     private readonly GameSession _session = new();
     private readonly LessonController _lessonController = new();
     private readonly PuzzleController _puzzleController = new();
+    private readonly ManualController _manualController = new();
     private BoardView _boardView = null!;
     private BoardInput _boardInput = null!;
     private ArrowLayer _arrows = null!;
@@ -28,6 +39,8 @@ public partial class Main : Node2D
     private AcceptDialog _aboutDialog = null!;
     private AcceptDialog _lessonDialog = null!;
     private AcceptDialog _puzzleDialog = null!;
+    private AcceptDialog _manualDialog = null!;
+    private FileDialog _fileDialog = null!;
 
     public override void _Ready()
     {
@@ -47,6 +60,10 @@ public partial class Main : Node2D
             "选择残局", [.. PuzzleLibrary.All.Select(p => p.Title)],
             index => LoadPuzzle(PuzzleLibrary.All[index]));
         AddChild(_puzzleDialog);
+        _manualDialog = BuildManualDialog();
+        AddChild(_manualDialog);
+        _fileDialog = BuildFileDialog();
+        AddChild(_fileDialog);
 
         _boardView.Scale = new Vector2(BoardScale, BoardScale);
         _boardInput.Board = _session.CurrentBoard;
@@ -70,6 +87,11 @@ public partial class Main : Node2D
         _hud.AboutRequested += () => _aboutDialog.PopupCentered();
         _hud.LessonRequested += OnLessonRequested;
         _hud.PuzzleRequested += OnPuzzleRequested;
+        _hud.ManualRequested += OnManualRequested;
+        _hud.ManualForwardRequested += OnManualForward;
+        _hud.ManualBackRequested += OnManualBack;
+        _hud.ManualRewindRequested += OnManualRewind;
+        _hud.ManualLoadRequested += OnManualRequested;
         _hud.Position = new Vector2(0, BoardView.NativeHeight * BoardScale + 16);
     }
 
@@ -96,15 +118,18 @@ public partial class Main : Node2D
         return dialog;
     }
 
-    /// <summary>是否处于教学/残局练习模式。</summary>
+    /// <summary>是否处于教学/残局/打谱练习模式（四态模式路由的练习侧判定）。</summary>
     private bool IsPracticing =>
-        _lessonController.Current is not null || _puzzleController.Current is not null;
+        _lessonController.Current is not null || _puzzleController.Current is not null
+        || _manualController.IsOpen;
 
-    /// <summary>清除两个练习控制器（不改变对局状态；换题与退出共用）。</summary>
+    /// <summary>清除全部练习/打谱控制器并隐藏打谱导航行（换题与退出共用）。</summary>
     private void ClearPracticeControllers()
     {
         _lessonController.Reset();
         _puzzleController.Clear();
+        _manualController.Clear();
+        _hud.SetManualMode(false);
     }
 
     /// <summary>退出练习回对弈：复位初始局面并恢复 HUD 按钮可用性。</summary>
@@ -118,7 +143,7 @@ public partial class Main : Node2D
         _hud.SetStatus("双人对弈");
     }
 
-    /// <summary>教学/残局入口共用的 Busy 门闸：引擎思考中拒绝打开弹窗。</summary>
+    /// <summary>练习/打谱入口共用的 Busy 门闸：引擎思考中拒绝打开弹窗。</summary>
     private void TryOpenPicker(AcceptDialog dialog)
     {
         if (_session.Busy)
@@ -227,6 +252,215 @@ public partial class Main : Node2D
         _boardInput.InputEnabled = true;
     }
 
+    /// <summary>构建打谱来源弹窗：内置示例棋谱列表 + 桌面端「打开文件…」项。</summary>
+    private AcceptDialog BuildManualDialog()
+    {
+        var dialog = new AcceptDialog { Title = "选择打谱棋谱", OkButtonText = "载入" };
+        var list = new ItemList { CustomMinimumSize = new Vector2(620, 420) };
+        foreach (var (_, name) in BuiltinManuals)
+        {
+            list.AddItem(name);
+        }
+
+        var openFileIndex = -1;
+        if (!OS.HasFeature("android"))
+        {
+            openFileIndex = list.ItemCount;
+            list.AddItem("打开文件…");
+        }
+
+        var selected = -1;
+        list.ItemSelected += index => selected = (int)index;
+        dialog.Confirmed += () =>
+        {
+            if (selected == openFileIndex && openFileIndex >= 0)
+            {
+                _fileDialog.CallDeferred(Window.MethodName.PopupCentered);
+                return;
+            }
+
+            if (selected >= 0 && selected < BuiltinManuals.Length)
+            {
+                LoadManualPath(BuiltinManuals[selected].Path);
+            }
+        };
+        dialog.AddChild(list);
+        return dialog;
+    }
+
+    /// <summary>构建棋谱文件选择对话框（桌面文件系统访问，XQF/PGN 过滤）。</summary>
+    private FileDialog BuildFileDialog() => new()
+    {
+        Title = "打开棋谱文件",
+        Access = FileDialog.AccessEnum.Filesystem,
+        FileMode = FileDialog.FileModeEnum.OpenFile,
+        UseNativeDialog = true,
+        Size = new Vector2I(900, 620),
+        Filters = ["*.xqf ; XQF 棋谱文件", "*.pgn ; PGN 棋谱文件"],
+    };
+
+    /// <summary>打开打谱来源选择（引擎思考中拒绝）。</summary>
+    private void OnManualRequested() => TryOpenPicker(_manualDialog);
+
+    /// <summary>按路径载入棋谱：按扩展名分派解析器，失败提示且不改变当前状态。</summary>
+    private void LoadManualPath(string path)
+    {
+        ManualDocument doc;
+        try
+        {
+            doc = path.EndsWith(".pgn", StringComparison.OrdinalIgnoreCase)
+                ? PgnParser.Parse(Godot.FileAccess.GetFileAsString(path))
+                : XqfParser.Parse(Godot.FileAccess.GetFileAsBytes(path));
+        }
+        catch (Exception e) when (e is ManualFormatException or FenFormatException)
+        {
+            GD.PrintErr($"棋谱解析失败：{e.Message}");
+            _soundPlayer.Play(SoundEffect.Invalid);
+            _hud.SetStatus($"棋谱载入失败：{e.Message}");
+            return;
+        }
+
+        LoadManual(doc, path.GetFile());
+    }
+
+    /// <summary>载入棋谱进入打谱模式：双人模式 + 初始局面 + 游标复位 + 打谱 UI 联动。</summary>
+    private void LoadManual(ManualDocument doc, string sourceName)
+    {
+        StopAnalysis();
+        ClearPracticeControllers();
+        _session.SetMode(GameMode.TwoPlayers);
+        _hud.SetMode(GameMode.TwoPlayers, _session.EngineAvailable);
+        _session.LoadFen(doc.InitialBoard.ToFen());
+        _manualController.Open(doc);
+        _hud.SetPracticeMode(true);
+        _hud.SetManualMode(true);
+        var title = doc.Title.Length > 0 ? doc.Title : sourceName;
+        _hud.SetStatus($"【打谱】{title}（共 {_manualController.MainlineCount} 着）");
+    }
+
+    /// <summary>打谱前进请求：单分支直接落子推进；多分支显示分支箭头等待点击；终局提示。</summary>
+    private void OnManualForward()
+    {
+        if (!_manualController.IsOpen)
+        {
+            return;
+        }
+
+        var branches = _manualController.Branches;
+        if (branches.Count == 0)
+        {
+            _hud.SetStatus("【打谱】已到棋谱终局");
+            return;
+        }
+
+        if (branches.Count > 1)
+        {
+            ShowBranchArrows();
+            return;
+        }
+
+        PlayManualMove(branches[0]);
+    }
+
+    /// <summary>打谱落子推进：TryPlayMove 成功后同步游标并刷新状态栏与分支箭头。</summary>
+    private void PlayManualMove(MoveNode node)
+    {
+        var move = node.Move!.Value;
+        var chinese = ChineseNotation.ToChinese(_session.CurrentBoard, move);
+        if (!_session.TryPlayMove(move))
+        {
+            _soundPlayer.Play(SoundEffect.Invalid);
+            return;
+        }
+
+        _manualController.AdvanceTo(node);
+        ReportManualPosition(chinese, node.Annotation);
+    }
+
+    /// <summary>打谱点击落点处理：命中分支即推进；未命中按多分支待选/终局/无此着法分别提示。</summary>
+    private void HandleManualMove(Move move)
+    {
+        if (_manualController.FindBranch(move) is not { } branch)
+        {
+            _soundPlayer.Play(SoundEffect.Invalid);
+            _hud.SetStatus(_manualController.Branches.Count > 1
+                ? "【打谱】存在变着分支，请点击箭头落点选择分支着法"
+                : _manualController.IsAtEnd ? "【打谱】已到棋谱终局" : "【打谱】棋谱无此着法，可点后退回溯");
+            return;
+        }
+
+        PlayManualMove(branch);
+    }
+
+    /// <summary>状态栏报告打谱进度：着法中文记谱 + 注解/多分支提示/终局标记。</summary>
+    private void ReportManualPosition(string chinese, string? annotation)
+    {
+        var depth = _manualController.CurrentDepth;
+        var total = _manualController.MainlineCount;
+        var text = $"【打谱】第 {depth}/{total} 着 {chinese}";
+        if (_manualController.Branches.Count > 1)
+        {
+            text += $"（存在 {_manualController.Branches.Count} 个分支，点击箭头落点选择）";
+            ShowBranchArrows();
+        }
+        else if (annotation is { Length: > 0 })
+        {
+            text += $"　注：{annotation}";
+        }
+        else if (_manualController.IsAtEnd)
+        {
+            text += "（终局）";
+        }
+
+        _hud.SetStatus(text);
+    }
+
+    /// <summary>多分支节点显示分支着法箭头（复用建议箭头层，数字角标即分支序号）。</summary>
+    private void ShowBranchArrows()
+    {
+        var branches = _manualController.Branches;
+        if (branches.Count <= 1)
+        {
+            return;
+        }
+
+        var suggestions = branches
+            .Select(node => node.Move!.Value)
+            .Select(move => (BoardView.CellCenter(move.From), BoardView.CellCenter(move.To)))
+            .ToList();
+        _arrows.ShowSuggestions(suggestions);
+    }
+
+    /// <summary>打谱后退：GameSession 撤销落子成功后同步游标（分支箭头经 BoardReverted 刷新）。</summary>
+    private void OnManualBack()
+    {
+        if (!_manualController.IsOpen)
+        {
+            return;
+        }
+
+        if (!_session.Undo())
+        {
+            _hud.SetStatus("【打谱】已在开局局面");
+            return;
+        }
+
+        _manualController.MoveBack();
+        _hud.SetStatus($"【打谱】后退至第 {_manualController.CurrentDepth}/{_manualController.MainlineCount} 着");
+    }
+
+    /// <summary>打谱回开局：载入初始局面并复位游标。</summary>
+    private void OnManualRewind()
+    {
+        if (!_manualController.IsOpen || !_session.LoadFen(_manualController.InitialFen))
+        {
+            return;
+        }
+
+        _manualController.Rewind();
+        _hud.SetStatus($"【打谱】已回到开局（共 {_manualController.MainlineCount} 着）");
+    }
+
     /// <summary>构建关于弹窗（MIT 声明 + Pikafish GPL-3.0 声明与源码指引）。</summary>
     private AcceptDialog BuildAboutDialog() => new()
     {
@@ -253,7 +487,7 @@ public partial class Main : Node2D
         _session.Dispose();
     }
 
-    /// <summary>应用走法：练习模式先过控制器先行校验，对弈模式直接落子（人机触发引擎应手）。</summary>
+    /// <summary>应用走法：练习模式先过控制器先行校验，打谱模式选分支，对弈模式直接落子。</summary>
     private void OnMoveChosen(int fromX, int fromY, int toX, int toY)
     {
         var move = new Move(new Position(fromX, fromY), new Position(toX, toY));
@@ -266,6 +500,12 @@ public partial class Main : Node2D
         if (_puzzleController.Current is not null)
         {
             HandlePuzzleMove(move);
+            return;
+        }
+
+        if (_manualController.IsOpen)
+        {
+            HandleManualMove(move);
             return;
         }
 
@@ -324,7 +564,7 @@ public partial class Main : Node2D
         }
     }
 
-    /// <summary>局面整体恢复：重注入新局面实例并全量重绘，清空箭头与评估。</summary>
+    /// <summary>局面整体恢复：重注入新局面实例并全量重绘，清空箭头与评估；打谱中重显分支箭头。</summary>
     private void OnBoardReverted()
     {
         _boardInput.ClearSelection();
@@ -332,6 +572,12 @@ public partial class Main : Node2D
         _boardView.RenderBoard(_session.CurrentBoard);
         _arrows.ClearAll();
         _hud.ClearEval();
+        if (_manualController.IsOpen)
+        {
+            ShowBranchArrows();
+            _hud.SetStatus($"【打谱】第 {_manualController.CurrentDepth}/{_manualController.MainlineCount} 着");
+        }
+
         if (_analysisEnabled && !IsPracticing)
         {
             _ = RefreshAnalysisAsync();
@@ -380,9 +626,15 @@ public partial class Main : Node2D
         _hud.SetStatus(_session.Mode == GameMode.PlayWithEngine ? "人机对弈（执红）" : "双人对弈");
     }
 
-    /// <summary>悔棋请求：练习模式中重玩本课/本题；对弈模式回退一步。</summary>
+    /// <summary>悔棋请求：打谱中后退一步；教学/残局重玩；对弈模式回退一步。</summary>
     private void OnUndo()
     {
+        if (_manualController.IsOpen)
+        {
+            OnManualBack();
+            return;
+        }
+
         if (_lessonController.Current is { } lesson)
         {
             _session.LoadFen(lesson.Fen);
@@ -513,9 +765,16 @@ public partial class Main : Node2D
         _hud.SetStatus("已复制当前局面 FEN");
     }
 
-    /// <summary>从系统剪贴板载入 FEN；非法 FEN 显示出错字段且不崩溃（AC-8）。</summary>
+    /// <summary>从系统剪贴板载入 FEN；非法 FEN 显示出错字段且不崩溃（AC-8）；打谱中拒绝（游标同步会被破坏）。</summary>
     private void OnPasteFen()
     {
+        if (_manualController.IsOpen)
+        {
+            _soundPlayer.Play(SoundEffect.Invalid);
+            _hud.SetStatus("【打谱】载入棋谱期间不可粘贴 FEN");
+            return;
+        }
+
         var fen = DisplayServer.ClipboardGet().Trim();
         if (fen.Length == 0)
         {
